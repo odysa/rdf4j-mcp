@@ -1,22 +1,48 @@
-[project]
-name = "rdf4j-mcp"
-version = "0.1.0"
-description = "MCP server for RDF4J integration"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "fastmcp<3",
-]
-
-[project.scripts]
-rdf4j-mcp = "rdf4j_mcp:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/rdf4j_mcp"]
+[project]
+name = "rdf4j-mcp"
+version = "0.1.0"
+description = "MCP server for RDF4J knowledge graph exploration and SPARQL querying"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "RDF4J MCP Contributors" }
+]
+keywords = ["mcp", "rdf4j", "sparql", "knowledge-graph", "semantic-web"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "mcp>=1.0.0",
+    "rdf4j-python>=0.1.0",
+    "rdflib>=7.0.0",
+    "pyoxigraph>=0.3.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pre-commit>=4.0",
+]
+
+[project.scripts]
+rdf4j-mcp = "rdf4j_mcp.server:main"
 
 [dependency-groups]
 dev = [
@@ -27,9 +53,16 @@ dev = [
     "ruff>=0.9",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/rdf4j_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
 [tool.ruff]
-target-version = "py312"
-line-length = 88
+target-version = "py310"
+line-length = 100
 
 [tool.ruff.lint]
 select = [
@@ -43,14 +76,14 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/rdf4j_mcp/server.py" = ["E402"]  # Module imports after mcp initialization
+"src/rdf4j_mcp/server.py" = ["E402"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = ["rdf4j_mcp.tools", "rdf4j_mcp.prompts", "rdf4j_mcp.resources"]
-disable_error_code = ["misc"]  # Allow untyped decorators from fastmcp
+disable_error_code = ["misc"]

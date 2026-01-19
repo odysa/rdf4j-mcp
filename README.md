@@ -1,34 +1,60 @@
-# rdf4j-mcp
+# RDF4J MCP Server
 
-MCP server for RDF4J integration, built with [FastMCP](https://github.com/jlowin/fastmcp).
+A Model Context Protocol (MCP) server for knowledge graph exploration and SPARQL querying. Supports both local RDF stores (via rdflib) and remote RDF4J servers.
 
-## Installation
+## Quick Start
+
+### Installation
 
 ```bash
+# Clone and install
+git clone <repository-url>
+cd rdf4j-mcp
+pip install -e .
+
+# Or using uv
 uv pip install -e .
 ```
 
-## Usage
-
-### Run the server
+### Run with Local Backend
 
 ```bash
-# Using the installed entry point
-rdf4j-mcp
+# Start with an empty in-memory store
+rdf4j-mcp --backend local
 
-# Or using fastmcp CLI
-fastmcp run src/rdf4j_mcp/server.py
+# Or load an existing RDF file
+rdf4j-mcp --backend local --store-path data.ttl --store-format turtle
 
 # Or using uv
-uv run rdf4j-mcp
+uv run rdf4j-mcp --backend local
 ```
 
-### Claude Desktop Configuration
+### Run with Remote RDF4J Server
 
-Add the following to your Claude Desktop configuration file:
+```bash
+rdf4j-mcp --backend remote \
+  --server-url http://localhost:8080/rdf4j-server \
+  --repository my-repo
+```
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+### Configure in Claude Desktop
+
+Add to your Claude Desktop config:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "rdf4j": {
+      "command": "rdf4j-mcp",
+      "args": ["--backend", "local", "--store-path", "/path/to/data.ttl"]
+    }
+  }
+}
+```
+
+Or using uv:
 
 ```json
 {
@@ -41,50 +67,96 @@ Add the following to your Claude Desktop configuration file:
 }
 ```
 
-## Available Components
+## Features
 
 ### Tools
 
 | Tool | Description |
 |------|-------------|
-| `echo` | Echo a message back to the caller |
-| `add` | Add two numbers together |
+| `sparql_select` | Execute SELECT queries, return JSON |
+| `sparql_construct` | Execute CONSTRUCT/DESCRIBE, return Turtle |
+| `sparql_ask` | Execute ASK queries, return boolean |
+| `describe_resource` | Get all triples about an IRI |
+| `search_classes` | Find classes by pattern |
+| `search_properties` | Find properties by pattern/domain/range |
+| `find_instances` | Find instances of a class |
+| `get_schema_summary` | Ontology overview |
+| `list_repositories` | List available repositories |
+| `get_namespaces` | Get namespace prefixes |
+| `get_statistics` | Statement/class/property counts |
 
 ### Resources
 
-| Resource URI | Description |
-|--------------|-------------|
-| `config://version` | Get the current server version |
-| `config://info` | Get server information |
+| URI | Description |
+|-----|-------------|
+| `rdf4j://repositories` | List of repositories |
+| `rdf4j://repository/{id}/schema` | Schema summary |
+| `rdf4j://repository/{id}/namespaces` | Namespace prefixes |
 
 ### Prompts
 
 | Prompt | Description |
 |--------|-------------|
-| `summarize` | Generate a prompt asking for a summary |
-| `explain` | Generate a prompt asking for an explanation |
+| `explore_knowledge_graph` | Guided KG exploration with schema context |
+| `write_sparql_query` | Natural language to SPARQL assistance |
+| `explain_ontology` | Explain schema elements |
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RDF4J_MCP_BACKEND_TYPE` | `local` | Backend: `local` or `remote` |
+| `RDF4J_MCP_RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
+| `RDF4J_MCP_DEFAULT_REPOSITORY` | - | Default repository ID |
+| `RDF4J_MCP_LOCAL_STORE_PATH` | - | Path to local RDF file |
+| `RDF4J_MCP_LOCAL_STORE_FORMAT` | `turtle` | RDF format |
+| `RDF4J_MCP_QUERY_TIMEOUT` | `30` | Query timeout (seconds) |
+| `RDF4J_MCP_DEFAULT_LIMIT` | `100` | Default LIMIT for queries |
+| `RDF4J_MCP_MAX_LIMIT` | `10000` | Maximum allowed LIMIT |
+
+### CLI Arguments
+
+```
+rdf4j-mcp [OPTIONS]
+
+Options:
+  --backend {local,remote}  Backend type (default: local)
+  --server-url URL          RDF4J server URL
+  --repository ID           Default repository ID
+  --store-path PATH         Local RDF file path
+  --store-format FORMAT     RDF format (turtle, xml, n3, nt, jsonld)
+  --debug                   Enable debug logging
+```
+
+## Examples
+
+See the [examples](examples/) directory for:
+- Loading and exploring sample data
+- Writing SPARQL queries
+- Working with ontologies
 
 ## Development
 
-### Install dev dependencies
-
 ```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+# Or using uv
 uv sync --dev
-```
 
-### Run tests
-
-```bash
+# Run tests
+pytest
+# Or using uv
 uv run pytest
+
+# Run linter
+ruff check src tests
+
+# Type check
+mypy src
 ```
 
-### Test with FastMCP client
+## License
 
-```python
-from fastmcp import Client
-
-async with Client("src/rdf4j_mcp/server.py") as client:
-    tools = await client.list_tools()
-    result = await client.call_tool("add", {"a": 5, "b": 3})
-    print(result)  # 8
-```
+MIT
