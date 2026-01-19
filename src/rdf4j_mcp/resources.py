@@ -12,7 +12,7 @@ def get_version() -> str:
 
 
 @mcp.resource("config://info")
-def get_info() -> dict:
+def get_info() -> dict[str, str]:
     """Get server information."""
     from . import __version__
 

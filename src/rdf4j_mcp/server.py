@@ -5,6 +5,6 @@ from fastmcp import FastMCP
 mcp = FastMCP("rdf4j-mcp")
 
 # Import modules to register tools, resources, and prompts
-from . import tools  # noqa: F401, E402
-from . import resources  # noqa: F401, E402
-from . import prompts  # noqa: F401, E402
+from . import prompts, resources, tools
+
+__all__ = ["mcp", "prompts", "resources", "tools"]
