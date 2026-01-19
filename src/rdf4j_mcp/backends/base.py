@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -11,7 +11,7 @@ class RepositoryInfo:
 
     id: str
     title: str
-    uri: Optional[str] = None
+    uri: str | None = None
     readable: bool = True
     writable: bool = True
 
@@ -29,10 +29,10 @@ class QueryResult:
     """Result of a SPARQL query."""
 
     type: str  # "select", "construct", "ask", "describe"
-    bindings: Optional[list[dict[str, Any]]] = None  # For SELECT queries
-    triples: Optional[str] = None  # For CONSTRUCT/DESCRIBE (as Turtle)
-    boolean: Optional[bool] = None  # For ASK queries
-    variables: Optional[list[str]] = None  # Variable names for SELECT
+    bindings: list[dict[str, Any]] | None = None  # For SELECT queries
+    triples: str | None = None  # For CONSTRUCT/DESCRIBE (as Turtle)
+    boolean: bool | None = None  # For ASK queries
+    variables: list[str] | None = None  # Variable names for SELECT
 
 
 @dataclass
@@ -70,57 +70,45 @@ class Backend(ABC):
         pass
 
     @abstractmethod
-    async def get_current_repository(self) -> Optional[str]:
+    async def get_current_repository(self) -> str | None:
         """Get the currently selected repository ID."""
         pass
 
     @abstractmethod
-    async def sparql_select(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_select(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL SELECT query."""
         pass
 
     @abstractmethod
-    async def sparql_construct(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_construct(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL CONSTRUCT or DESCRIBE query."""
         pass
 
     @abstractmethod
-    async def sparql_ask(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_ask(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL ASK query."""
         pass
 
     @abstractmethod
-    async def get_namespaces(
-        self, repository_id: Optional[str] = None
-    ) -> list[NamespaceInfo]:
+    async def get_namespaces(self, repository_id: str | None = None) -> list[NamespaceInfo]:
         """Get namespace prefix mappings."""
         pass
 
     @abstractmethod
-    async def get_statistics(
-        self, repository_id: Optional[str] = None
-    ) -> StatisticsInfo:
+    async def get_statistics(self, repository_id: str | None = None) -> StatisticsInfo:
         """Get repository statistics."""
         pass
 
-    async def describe_resource(
-        self, iri: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def describe_resource(self, iri: str, repository_id: str | None = None) -> QueryResult:
         """Get all triples about a resource."""
         query = f"DESCRIBE <{iri}>"
         return await self.sparql_construct(query, repository_id)
 
     async def search_classes(
         self,
-        pattern: Optional[str] = None,
+        pattern: str | None = None,
         limit: int = 100,
-        repository_id: Optional[str] = None,
+        repository_id: str | None = None,
     ) -> QueryResult:
         """Search for classes in the ontology."""
         filter_clause = ""
@@ -146,11 +134,11 @@ class Backend(ABC):
 
     async def search_properties(
         self,
-        pattern: Optional[str] = None,
-        domain: Optional[str] = None,
-        range_: Optional[str] = None,
+        pattern: str | None = None,
+        domain: str | None = None,
+        range_: str | None = None,
         limit: int = 100,
-        repository_id: Optional[str] = None,
+        repository_id: str | None = None,
     ) -> QueryResult:
         """Search for properties in the ontology."""
         filters = []
@@ -189,7 +177,7 @@ class Backend(ABC):
         self,
         class_iri: str,
         limit: int = 100,
-        repository_id: Optional[str] = None,
+        repository_id: str | None = None,
     ) -> QueryResult:
         """Find instances of a class."""
         query = f"""
@@ -203,9 +191,7 @@ class Backend(ABC):
         """
         return await self.sparql_select(query, repository_id)
 
-    async def get_schema_summary(
-        self, repository_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def get_schema_summary(self, repository_id: str | None = None) -> dict[str, Any]:
         """Get a summary of the ontology schema."""
         classes_result = await self.search_classes(limit=50, repository_id=repository_id)
         properties_result = await self.search_properties(limit=50, repository_id=repository_id)

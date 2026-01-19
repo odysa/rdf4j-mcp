@@ -1,6 +1,6 @@
 """Remote RDF backend using RDF4J Python client."""
 
-from typing import Any, Optional
+from typing import Any
 
 import pyoxigraph as og
 from rdf4j_python import AsyncRdf4j, AsyncRdf4JRepository
@@ -20,7 +20,7 @@ class RemoteBackend(Backend):
     def __init__(
         self,
         server_url: str,
-        default_repository: Optional[str] = None,
+        default_repository: str | None = None,
     ):
         """Initialize remote backend.
 
@@ -30,9 +30,9 @@ class RemoteBackend(Backend):
         """
         self._server_url = server_url.rstrip("/")
         self._default_repository = default_repository
-        self._current_repository: Optional[str] = default_repository
-        self._client: Optional[AsyncRdf4j] = None
-        self._repo: Optional[AsyncRdf4JRepository] = None
+        self._current_repository: str | None = default_repository
+        self._client: AsyncRdf4j | None = None
+        self._repo: AsyncRdf4JRepository | None = None
 
     async def connect(self) -> None:
         """Connect to the RDF4J server."""
@@ -57,9 +57,7 @@ class RemoteBackend(Backend):
             raise RuntimeError("Backend not connected. Call connect() first.")
         return self._client
 
-    async def _get_repository(
-        self, repository_id: Optional[str] = None
-    ) -> AsyncRdf4JRepository:
+    async def _get_repository(self, repository_id: str | None = None) -> AsyncRdf4JRepository:
         """Get repository instance."""
         client = self._ensure_connected()
         repo_id = repository_id or self._current_repository
@@ -94,7 +92,7 @@ class RemoteBackend(Backend):
         self._repo = await client.get_repository(repository_id)
         self._current_repository = repository_id
 
-    async def get_current_repository(self) -> Optional[str]:
+    async def get_current_repository(self) -> str | None:
         """Get the currently selected repository ID."""
         return self._current_repository
 
@@ -140,9 +138,7 @@ class RemoteBackend(Backend):
 
         return bindings, var_names
 
-    async def sparql_select(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_select(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL SELECT query."""
         repo = await self._get_repository(repository_id)
         result = await repo.query(query)
@@ -161,9 +157,7 @@ class RemoteBackend(Backend):
                 variables=[],
             )
 
-    async def sparql_construct(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_construct(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL CONSTRUCT or DESCRIBE query."""
         repo = await self._get_repository(repository_id)
         result = await repo.query(query)
@@ -205,9 +199,7 @@ class RemoteBackend(Backend):
         else:
             return str(term)
 
-    async def sparql_ask(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_ask(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL ASK query."""
         repo = await self._get_repository(repository_id)
         result = await repo.query(query)
@@ -223,21 +215,14 @@ class RemoteBackend(Backend):
                 boolean=False,
             )
 
-    async def get_namespaces(
-        self, repository_id: Optional[str] = None
-    ) -> list[NamespaceInfo]:
+    async def get_namespaces(self, repository_id: str | None = None) -> list[NamespaceInfo]:
         """Get namespace prefix mappings."""
         repo = await self._get_repository(repository_id)
         namespaces = await repo.get_namespaces()
 
-        return [
-            NamespaceInfo(prefix=ns.prefix, namespace=str(ns.namespace))
-            for ns in namespaces
-        ]
+        return [NamespaceInfo(prefix=ns.prefix, namespace=str(ns.namespace)) for ns in namespaces]
 
-    async def get_statistics(
-        self, repository_id: Optional[str] = None
-    ) -> StatisticsInfo:
+    async def get_statistics(self, repository_id: str | None = None) -> StatisticsInfo:
         """Get repository statistics."""
         repo = await self._get_repository(repository_id)
 

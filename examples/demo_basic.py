@@ -7,10 +7,8 @@ with a local rdflib backend.
 """
 
 import asyncio
-import json
 from pathlib import Path
 
-from rdf4j_mcp.backends.local import LocalBackend
 from rdf4j_mcp.config import BackendType, Settings
 from rdf4j_mcp.server import RDF4JMCPServer
 

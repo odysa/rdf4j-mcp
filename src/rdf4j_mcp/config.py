@@ -1,7 +1,6 @@
 """Configuration for RDF4J MCP Server."""
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,13 +34,13 @@ class Settings(BaseSettings):
         default="http://localhost:8080/rdf4j-server",
         description="URL of the RDF4J server",
     )
-    default_repository: Optional[str] = Field(
+    default_repository: str | None = Field(
         default=None,
         description="Default repository ID to use",
     )
 
     # Local backend settings
-    local_store_path: Optional[str] = Field(
+    local_store_path: str | None = Field(
         default=None,
         description="Path to local RDF store file (Turtle, N-Triples, etc.)",
     )
@@ -76,7 +75,7 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:

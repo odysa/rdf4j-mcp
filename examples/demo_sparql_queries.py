@@ -9,7 +9,6 @@ when working with knowledge graphs.
 import asyncio
 from pathlib import Path
 
-from rdf4j_mcp.backends.local import LocalBackend
 from rdf4j_mcp.config import BackendType, Settings
 from rdf4j_mcp.server import RDF4JMCPServer
 
@@ -71,7 +70,7 @@ async def main():
             }
             ORDER BY ?name
             """,
-            lambda b: f"{b['name']['value']} <{b['email']['value']}>"
+            lambda b: f"{b['name']['value']} <{b['email']['value']}>",
         )
 
         # Query 2: OPTIONAL clause
@@ -91,7 +90,7 @@ async def main():
             }
             ORDER BY ?name
             """,
-            lambda b: f"{b['name']['value']} - {b.get('deptName', {}).get('value', 'No department')}"
+            lambda b: f"{b['name']['value']} - {b.get('deptName', {}).get('value', 'N/A')}",
         )
 
         # Query 3: FILTER
@@ -110,7 +109,7 @@ async def main():
             }
             ORDER BY DESC(?budget)
             """,
-            lambda b: f"{b['name']['value']}: ${float(b['budget']['value']):,.0f}"
+            lambda b: f"{b['name']['value']}: ${float(b['budget']['value']):,.0f}",
         )
 
         # Query 4: Aggregation with GROUP BY
@@ -128,7 +127,7 @@ async def main():
             GROUP BY ?project ?projectName
             ORDER BY DESC(?teamSize)
             """,
-            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members"
+            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members",
         )
 
         # Query 5: HAVING clause
@@ -147,7 +146,7 @@ async def main():
             HAVING (COUNT(?person) >= 2)
             ORDER BY DESC(?teamSize)
             """,
-            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members"
+            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members",
         )
 
         # Query 6: Subquery
@@ -174,7 +173,10 @@ async def main():
                         ex:name ?personName .
             }
             """,
-            lambda b: f"{b['personName']['value']} on {b['projectName']['value']} (${float(b['budget']['value']):,.0f})"
+            lambda b: (
+                f"{b['personName']['value']} on {b['projectName']['value']} "
+                f"(${float(b['budget']['value']):,.0f})"
+            ),
         )
 
         # Query 7: UNION
@@ -199,7 +201,7 @@ async def main():
             }
             ORDER BY ?type ?name
             """,
-            lambda b: f"[{b['type']['value']}] {b['name']['value']}"
+            lambda b: f"[{b['type']['value']}] {b['name']['value']}",
         )
 
         # Query 8: Property Path
@@ -216,7 +218,7 @@ async def main():
                 ?org ex:name ?orgName .
             }
             """,
-            lambda b: f"{b['personName']['value']} -> {b['orgName']['value']}"
+            lambda b: f"{b['personName']['value']} -> {b['orgName']['value']}",
         )
 
         # Query 9: REGEX filter
@@ -232,7 +234,7 @@ async def main():
                 FILTER(REGEX(?name, "Python|SPARQL", "i"))
             }
             """,
-            lambda b: b['name']['value']
+            lambda b: b["name"]["value"],
         )
 
         # Query 10: Complex analysis
@@ -253,7 +255,10 @@ async def main():
             GROUP BY ?tech ?techName
             ORDER BY DESC(?projectCount)
             """,
-            lambda b: f"{b['techName']['value']}: {b['projectCount']['value']} projects ({b['projects']['value']})"
+            lambda b: (
+                f"{b['techName']['value']}: {b['projectCount']['value']} projects "
+                f"({b['projects']['value']})"
+            ),
         )
 
         # ASK Query Demo
@@ -261,12 +266,19 @@ async def main():
         print("-" * 50)
 
         ask_queries = [
-            ("Is there anyone named 'Alice Johnson'?",
-             "ASK { ?p <http://example.org/name> 'Alice Johnson' }"),
-            ("Are there any projects using Kubernetes?",
-             "ASK { ?p <http://example.org/uses> <http://example.org/kubernetes> }"),
-            ("Is there a completed project?",
-             "ASK { ?p a <http://example.org/Project> ; <http://example.org/status> 'completed' }"),
+            (
+                "Is there anyone named 'Alice Johnson'?",
+                "ASK { ?p <http://example.org/name> 'Alice Johnson' }",
+            ),
+            (
+                "Are there any projects using Kubernetes?",
+                "ASK { ?p <http://example.org/uses> <http://example.org/kubernetes> }",
+            ),
+            (
+                "Is there a completed project?",
+                "ASK { ?p a <http://example.org/Project> ; "
+                "<http://example.org/status> 'completed' }",
+            ),
         ]
 
         for question, query in ask_queries:

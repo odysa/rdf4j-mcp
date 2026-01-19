@@ -1,7 +1,7 @@
 """Repository metadata tools for MCP."""
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server import Server
 from mcp.types import TextContent, Tool
@@ -43,7 +43,7 @@ def register_metadata_tools(server: Server, get_backend: Any) -> None:
                     "properties": {
                         "repository_id": {
                             "type": "string",
-                            "description": "Repository ID (optional, uses default if not specified)",
+                            "description": "Repository ID (uses default if not specified)",
                         },
                     },
                 },
@@ -59,7 +59,7 @@ def register_metadata_tools(server: Server, get_backend: Any) -> None:
                     "properties": {
                         "repository_id": {
                             "type": "string",
-                            "description": "Repository ID (optional, uses default if not specified)",
+                            "description": "Repository ID (uses default if not specified)",
                         },
                     },
                 },
@@ -83,9 +83,7 @@ def register_metadata_tools(server: Server, get_backend: Any) -> None:
             ),
             Tool(
                 name="get_current_repository",
-                description=(
-                    "Get the currently selected default repository ID."
-                ),
+                description=("Get the currently selected default repository ID."),
                 inputSchema={
                     "type": "object",
                     "properties": {},
@@ -139,17 +137,14 @@ async def _handle_get_namespaces(
     arguments: dict[str, Any],
 ) -> list[TextContent]:
     """Handle get_namespaces tool call."""
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     namespaces = await backend.get_namespaces(repository_id)
 
     output = {
         "type": "namespaces",
         "count": len(namespaces),
-        "namespaces": [
-            {"prefix": ns.prefix, "namespace": ns.namespace}
-            for ns in namespaces
-        ],
+        "namespaces": [{"prefix": ns.prefix, "namespace": ns.namespace} for ns in namespaces],
         "sparql_prefixes": _format_sparql_prefixes(namespaces),
     }
 
@@ -161,7 +156,7 @@ async def _handle_get_statistics(
     arguments: dict[str, Any],
 ) -> list[TextContent]:
     """Handle get_statistics tool call."""
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     stats = await backend.get_statistics(repository_id)
 

@@ -34,26 +34,28 @@ def register_resources(server: Server, get_backend: Any) -> None:
         try:
             repos = await backend.list_repositories()
             for repo in repos:
-                resources.extend([
-                    Resource(
-                        uri=f"rdf4j://repository/{repo.id}/schema",
-                        name=f"{repo.title} - Schema",
-                        description=f"Schema summary for repository '{repo.id}'",
-                        mimeType="application/json",
-                    ),
-                    Resource(
-                        uri=f"rdf4j://repository/{repo.id}/namespaces",
-                        name=f"{repo.title} - Namespaces",
-                        description=f"Namespace prefixes for repository '{repo.id}'",
-                        mimeType="application/json",
-                    ),
-                    Resource(
-                        uri=f"rdf4j://repository/{repo.id}/statistics",
-                        name=f"{repo.title} - Statistics",
-                        description=f"Statistics for repository '{repo.id}'",
-                        mimeType="application/json",
-                    ),
-                ])
+                resources.extend(
+                    [
+                        Resource(
+                            uri=f"rdf4j://repository/{repo.id}/schema",
+                            name=f"{repo.title} - Schema",
+                            description=f"Schema summary for repository '{repo.id}'",
+                            mimeType="application/json",
+                        ),
+                        Resource(
+                            uri=f"rdf4j://repository/{repo.id}/namespaces",
+                            name=f"{repo.title} - Namespaces",
+                            description=f"Namespace prefixes for repository '{repo.id}'",
+                            mimeType="application/json",
+                        ),
+                        Resource(
+                            uri=f"rdf4j://repository/{repo.id}/statistics",
+                            name=f"{repo.title} - Statistics",
+                            description=f"Statistics for repository '{repo.id}'",
+                            mimeType="application/json",
+                        ),
+                    ]
+                )
         except Exception:
             # If we can't list repositories, just return base resources
             pass
@@ -165,10 +167,7 @@ async def _read_namespaces(backend: Backend, repo_id: str, uri: str) -> TextReso
         "type": "namespaces",
         "repository_id": repo_id,
         "count": len(namespaces),
-        "namespaces": [
-            {"prefix": ns.prefix, "namespace": ns.namespace}
-            for ns in namespaces
-        ],
+        "namespaces": [{"prefix": ns.prefix, "namespace": ns.namespace} for ns in namespaces],
         "sparql_prefixes": "\n".join(sparql_prefixes),
     }
 

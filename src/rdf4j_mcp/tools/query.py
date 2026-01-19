@@ -1,7 +1,7 @@
 """SPARQL query tools for MCP."""
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server import Server
 from mcp.types import TextContent, Tool
@@ -37,11 +37,11 @@ def register_query_tools(server: Server, get_backend: Any) -> None:
                         },
                         "repository_id": {
                             "type": "string",
-                            "description": "Repository ID (optional, uses default if not specified)",
+                            "description": "Repository ID (uses default if not specified)",
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of results (applied if query has no LIMIT)",
+                            "description": "Max results (applied if query has no LIMIT)",
                         },
                     },
                     "required": ["query"],
@@ -62,7 +62,7 @@ def register_query_tools(server: Server, get_backend: Any) -> None:
                         },
                         "repository_id": {
                             "type": "string",
-                            "description": "Repository ID (optional, uses default if not specified)",
+                            "description": "Repository ID (uses default if not specified)",
                         },
                     },
                     "required": ["query"],
@@ -83,7 +83,7 @@ def register_query_tools(server: Server, get_backend: Any) -> None:
                         },
                         "repository_id": {
                             "type": "string",
-                            "description": "Repository ID (optional, uses default if not specified)",
+                            "description": "Repository ID (uses default if not specified)",
                         },
                     },
                     "required": ["query"],
@@ -114,7 +114,7 @@ async def _handle_sparql_select(
 ) -> list[TextContent]:
     """Handle sparql_select tool call."""
     query = arguments["query"]
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
     limit = arguments.get("limit")
 
     # Apply default limit if query doesn't have one
@@ -145,7 +145,7 @@ async def _handle_sparql_construct(
 ) -> list[TextContent]:
     """Handle sparql_construct tool call."""
     query = arguments["query"]
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     result = await backend.sparql_construct(query, repository_id)
 
@@ -161,7 +161,7 @@ async def _handle_sparql_ask(
 ) -> list[TextContent]:
     """Handle sparql_ask tool call."""
     query = arguments["query"]
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     result = await backend.sparql_ask(query, repository_id)
 

@@ -1,9 +1,9 @@
 """Local RDF backend using rdflib."""
 
-from typing import Any, Optional
+from typing import Any
 
 import rdflib
-from rdflib import RDF, RDFS, OWL, Graph, Namespace
+from rdflib import OWL, RDF, RDFS, Graph, Namespace
 from rdflib.query import ResultRow
 
 from .base import (
@@ -20,7 +20,7 @@ class LocalBackend(Backend):
 
     def __init__(
         self,
-        store_path: Optional[str] = None,
+        store_path: str | None = None,
         store_format: str = "turtle",
     ):
         """Initialize local backend.
@@ -31,7 +31,7 @@ class LocalBackend(Backend):
         """
         self._store_path = store_path
         self._store_format = store_format
-        self._graph: Optional[Graph] = None
+        self._graph: Graph | None = None
         self._repository_id = "local"
 
     async def connect(self) -> None:
@@ -75,7 +75,7 @@ class LocalBackend(Backend):
         if repository_id != self._repository_id:
             raise ValueError(f"Unknown repository: {repository_id}")
 
-    async def get_current_repository(self) -> Optional[str]:
+    async def get_current_repository(self) -> str | None:
         """Get current repository ID."""
         return self._repository_id
 
@@ -108,9 +108,7 @@ class LocalBackend(Backend):
         else:
             return {"type": "unknown", "value": str(term)}
 
-    async def sparql_select(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_select(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL SELECT query."""
         graph = self._ensure_connected()
         result = graph.query(query)
@@ -124,9 +122,7 @@ class LocalBackend(Backend):
             variables=variables,
         )
 
-    async def sparql_construct(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_construct(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL CONSTRUCT or DESCRIBE query."""
         graph = self._ensure_connected()
         result = graph.query(query)
@@ -144,9 +140,7 @@ class LocalBackend(Backend):
             triples=turtle,
         )
 
-    async def sparql_ask(
-        self, query: str, repository_id: Optional[str] = None
-    ) -> QueryResult:
+    async def sparql_ask(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL ASK query."""
         graph = self._ensure_connected()
         result = graph.query(query)
@@ -156,9 +150,7 @@ class LocalBackend(Backend):
             boolean=bool(result.askAnswer),
         )
 
-    async def get_namespaces(
-        self, repository_id: Optional[str] = None
-    ) -> list[NamespaceInfo]:
+    async def get_namespaces(self, repository_id: str | None = None) -> list[NamespaceInfo]:
         """Get namespace prefix mappings."""
         graph = self._ensure_connected()
         namespaces = []
@@ -166,9 +158,7 @@ class LocalBackend(Backend):
             namespaces.append(NamespaceInfo(prefix=prefix, namespace=str(ns)))
         return namespaces
 
-    async def get_statistics(
-        self, repository_id: Optional[str] = None
-    ) -> StatisticsInfo:
+    async def get_statistics(self, repository_id: str | None = None) -> StatisticsInfo:
         """Get repository statistics."""
         graph = self._ensure_connected()
 
@@ -219,7 +209,7 @@ class LocalBackend(Backend):
             total_objects=len(objects),
         )
 
-    async def load_file(self, file_path: str, format: Optional[str] = None) -> int:
+    async def load_file(self, file_path: str, format: str | None = None) -> int:
         """Load RDF data from a file.
 
         Args:

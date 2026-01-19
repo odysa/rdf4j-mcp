@@ -9,7 +9,6 @@ and understand a knowledge graph schema.
 import asyncio
 from pathlib import Path
 
-from rdf4j_mcp.backends.local import LocalBackend
 from rdf4j_mcp.config import BackendType, Settings
 from rdf4j_mcp.server import RDF4JMCPServer
 
@@ -52,7 +51,8 @@ async def main():
 
         classes = await backend.search_classes()
         owl_classes = [
-            b for b in (classes.bindings or [])
+            b
+            for b in (classes.bindings or [])
             if "example.org" in b.get("class", {}).get("value", "")
         ]
 
@@ -76,7 +76,8 @@ async def main():
 
             props = await backend.search_properties(domain=class_iri)
             class_props = [
-                p for p in (props.bindings or [])
+                p
+                for p in (props.bindings or [])
                 if p.get("domain", {}).get("value", "") == class_iri
             ]
 

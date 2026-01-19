@@ -77,11 +77,11 @@ class RDF4JMCPServer:
                             },
                             "repository_id": {
                                 "type": "string",
-                                "description": "Repository ID (optional, uses default if not specified)",
+                                "description": "Repository ID (uses default if not specified)",
                             },
                             "limit": {
                                 "type": "integer",
-                                "description": "Maximum number of results (applied if query has no LIMIT)",
+                                "description": "Max results (applied if query has no LIMIT)",
                             },
                         },
                         "required": ["query"],
@@ -90,7 +90,7 @@ class RDF4JMCPServer:
                 Tool(
                     name="sparql_construct",
                     description=(
-                        "Execute a SPARQL CONSTRUCT or DESCRIBE query and return results as Turtle. "
+                        "Execute a SPARQL CONSTRUCT or DESCRIBE query, return Turtle."
                         "Use this for queries that return RDF triples/graphs."
                     ),
                     inputSchema={
@@ -102,7 +102,7 @@ class RDF4JMCPServer:
                             },
                             "repository_id": {
                                 "type": "string",
-                                "description": "Repository ID (optional, uses default if not specified)",
+                                "description": "Repository ID (uses default if not specified)",
                             },
                         },
                         "required": ["query"],
@@ -123,7 +123,7 @@ class RDF4JMCPServer:
                             },
                             "repository_id": {
                                 "type": "string",
-                                "description": "Repository ID (optional, uses default if not specified)",
+                                "description": "Repository ID (uses default if not specified)",
                             },
                         },
                         "required": ["query"],
@@ -149,7 +149,7 @@ class RDF4JMCPServer:
                             },
                             "include_incoming": {
                                 "type": "boolean",
-                                "description": "Include triples where resource is object (default: true)",
+                                "description": "Include triples where resource is object",
                                 "default": True,
                             },
                         },
@@ -276,7 +276,7 @@ class RDF4JMCPServer:
                         "properties": {
                             "repository_id": {
                                 "type": "string",
-                                "description": "Repository ID (optional, uses default if not specified)",
+                                "description": "Repository ID (uses default if not specified)",
                             },
                         },
                     },
@@ -292,7 +292,7 @@ class RDF4JMCPServer:
                         "properties": {
                             "repository_id": {
                                 "type": "string",
-                                "description": "Repository ID (optional, uses default if not specified)",
+                                "description": "Repository ID (uses default if not specified)",
                             },
                         },
                     },

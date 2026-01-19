@@ -115,17 +115,13 @@ class TestSPARQLQueries:
 
     async def test_sparql_ask_true(self, backend_with_data):
         """Test ASK query returning true."""
-        result = await backend_with_data.sparql_ask(
-            "ASK { ?s a <http://example.org/Person> }"
-        )
+        result = await backend_with_data.sparql_ask("ASK { ?s a <http://example.org/Person> }")
         assert result.type == "ask"
         assert result.boolean is True
 
     async def test_sparql_ask_false(self, backend_with_data):
         """Test ASK query returning false."""
-        result = await backend_with_data.sparql_ask(
-            "ASK { ?s a <http://example.org/NonExistent> }"
-        )
+        result = await backend_with_data.sparql_ask("ASK { ?s a <http://example.org/NonExistent> }")
         assert result.type == "ask"
         assert result.boolean is False
 
@@ -161,16 +157,12 @@ class TestExplorationMethods:
 
     async def test_search_properties_with_domain(self, backend_with_data):
         """Test searching properties with domain filter."""
-        result = await backend_with_data.search_properties(
-            domain="http://example.org/Person"
-        )
+        result = await backend_with_data.search_properties(domain="http://example.org/Person")
         assert result.type == "select"
 
     async def test_find_instances(self, backend_with_data):
         """Test finding instances of a class."""
-        result = await backend_with_data.find_instances(
-            class_iri="http://example.org/Person"
-        )
+        result = await backend_with_data.find_instances(class_iri="http://example.org/Person")
         assert result.type == "select"
         assert len(result.bindings) == 2  # Alice and Bob
 
@@ -180,9 +172,7 @@ class TestExplorationMethods:
 
     async def test_describe_resource(self, backend_with_data):
         """Test describing a resource."""
-        result = await backend_with_data.describe_resource(
-            iri="http://example.org/alice"
-        )
+        result = await backend_with_data.describe_resource(iri="http://example.org/alice")
         assert result.type == "construct"
         assert result.triples is not None
         assert "alice" in result.triples

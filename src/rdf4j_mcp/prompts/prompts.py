@@ -112,16 +112,20 @@ async def _get_explore_prompt(
 
     # Format schema context
     ns_text = "\n".join([f"  - {ns['prefix']}: <{ns['namespace']}>" for ns in namespaces[:10]])
-    classes_text = "\n".join([
-        f"  - {c.get('class', {}).get('value', 'Unknown')}"
-        + (f" ({c.get('label', {}).get('value', '')})" if c.get('label') else "")
-        for c in classes
-    ])
-    props_text = "\n".join([
-        f"  - {p.get('property', {}).get('value', 'Unknown')}"
-        + (f" ({p.get('label', {}).get('value', '')})" if p.get('label') else "")
-        for p in properties
-    ])
+    classes_text = "\n".join(
+        [
+            f"  - {c.get('class', {}).get('value', 'Unknown')}"
+            + (f" ({c.get('label', {}).get('value', '')})" if c.get("label") else "")
+            for c in classes
+        ]
+    )
+    props_text = "\n".join(
+        [
+            f"  - {p.get('property', {}).get('value', 'Unknown')}"
+            + (f" ({p.get('label', {}).get('value', '')})" if p.get("label") else "")
+            for p in properties
+        ]
+    )
 
     focus_text = ""
     if focus_area:
@@ -130,9 +134,9 @@ async def _get_explore_prompt(
     prompt_text = f"""You are helping explore a knowledge graph. Here is the current schema context:
 
 ## Statistics
-- Total statements: {stats['total_statements']}
-- Total classes: {stats['total_classes']}
-- Total properties: {stats['total_properties']}
+- Total statements: {stats["total_statements"]}
+- Total classes: {stats["total_classes"]}
+- Total properties: {stats["total_properties"]}
 
 ## Namespaces
 {ns_text}
@@ -187,26 +191,29 @@ async def _get_sparql_prompt(
     properties = summary["properties"][:20]
 
     # Format prefixes
-    prefixes = "\n".join([
-        f"PREFIX {ns['prefix']}: <{ns['namespace']}>"
-        for ns in namespaces if ns['prefix']
-    ][:15])
+    prefixes = "\n".join(
+        [f"PREFIX {ns['prefix']}: <{ns['namespace']}>" for ns in namespaces if ns["prefix"]][:15]
+    )
 
     # Format classes
-    classes_text = "\n".join([
-        f"  - <{c.get('class', {}).get('value', '')}>"
-        + (f" # {c.get('label', {}).get('value', '')}" if c.get('label') else "")
-        for c in classes
-    ])
+    classes_text = "\n".join(
+        [
+            f"  - <{c.get('class', {}).get('value', '')}>"
+            + (f" # {c.get('label', {}).get('value', '')}" if c.get("label") else "")
+            for c in classes
+        ]
+    )
 
     # Format properties
-    props_text = "\n".join([
-        f"  - <{p.get('property', {}).get('value', '')}>"
-        + (f" # {p.get('label', {}).get('value', '')}" if p.get('label') else "")
-        + (f" domain: {p.get('domain', {}).get('value', '')}" if p.get('domain') else "")
-        + (f" range: {p.get('range', {}).get('value', '')}" if p.get('range') else "")
-        for p in properties
-    ])
+    props_text = "\n".join(
+        [
+            f"  - <{p.get('property', {}).get('value', '')}>"
+            + (f" # {p.get('label', {}).get('value', '')}" if p.get("label") else "")
+            + (f" domain: {p.get('domain', {}).get('value', '')}" if p.get("domain") else "")
+            + (f" range: {p.get('range', {}).get('value', '')}" if p.get("range") else "")
+            for p in properties
+        ]
+    )
 
     prompt_text = f"""Help me write a SPARQL query to answer this question:
 
@@ -230,7 +237,8 @@ async def _get_sparql_prompt(
 4. Use LIMIT to avoid overwhelming results
 5. Consider using ORDER BY for sorted results
 
-Please write a SPARQL SELECT query that answers the question. Explain your reasoning and any assumptions made."""
+Please write a SPARQL SELECT query that answers the question.
+Explain your reasoning and any assumptions made."""
 
     return GetPromptResult(
         description="SPARQL query writing assistance",
@@ -274,10 +282,12 @@ async def _get_explain_prompt(
         try:
             class_result = await backend.sparql_select(class_query, repo_id)
             if class_result.bindings:
-                props = "\n".join([
-                    f"  - {b.get('property', {}).get('value', 'Unknown')}"
-                    for b in class_result.bindings[:20]
-                ])
+                props = "\n".join(
+                    [
+                        f"  - {b.get('property', {}).get('value', 'Unknown')}"
+                        for b in class_result.bindings[:20]
+                    ]
+                )
                 focus_text = f"""
 ## Focus Class: {focus_class}
 Properties related to this class:
@@ -288,26 +298,28 @@ Properties related to this class:
 
     # Format overall summary
     ns_text = "\n".join([f"  - {ns['prefix']}: <{ns['namespace']}>" for ns in namespaces[:10]])
-    classes_text = "\n".join([
-        f"  - {c.get('class', {}).get('value', 'Unknown')}"
-        + (f": {c.get('comment', {}).get('value', '')[:100]}" if c.get('comment') else "")
-        for c in classes[:25]
-    ])
-    props_text = "\n".join([
-        f"  - {p.get('property', {}).get('value', 'Unknown')}"
-        + (f" (domain: {p.get('domain', {}).get('value', 'Any')})"
-           if p.get('domain') else "")
-        + (f" -> {p.get('range', {}).get('value', 'Any')}"
-           if p.get('range') else "")
-        for p in properties[:25]
-    ])
+    classes_text = "\n".join(
+        [
+            f"  - {c.get('class', {}).get('value', 'Unknown')}"
+            + (f": {c.get('comment', {}).get('value', '')[:100]}" if c.get("comment") else "")
+            for c in classes[:25]
+        ]
+    )
+    props_text = "\n".join(
+        [
+            f"  - {p.get('property', {}).get('value', 'Unknown')}"
+            + (f" (domain: {p.get('domain', {}).get('value', 'Any')})" if p.get("domain") else "")
+            + (f" -> {p.get('range', {}).get('value', 'Any')}" if p.get("range") else "")
+            for p in properties[:25]
+        ]
+    )
 
     prompt_text = f"""Please explain this ontology/schema:
 
 ## Overview
-- Total statements: {stats['total_statements']}
-- Total classes: {stats['total_classes']}
-- Total properties: {stats['total_properties']}
+- Total statements: {stats["total_statements"]}
+- Total classes: {stats["total_classes"]}
+- Total properties: {stats["total_properties"]}
 
 ## Namespaces Used
 {ns_text}

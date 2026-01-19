@@ -1,7 +1,7 @@
 """Knowledge graph exploration tools for MCP."""
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server import Server
 from mcp.types import TextContent, Tool
@@ -40,7 +40,7 @@ def register_explore_tools(server: Server, get_backend: Any) -> None:
                         },
                         "include_incoming": {
                             "type": "boolean",
-                            "description": "Include triples where resource is object (default: true)",
+                            "description": "Include triples where resource is object",
                             "default": True,
                         },
                     },
@@ -107,10 +107,7 @@ def register_explore_tools(server: Server, get_backend: Any) -> None:
             ),
             Tool(
                 name="find_instances",
-                description=(
-                    "Find instances of a class. "
-                    "Returns instance IRIs with labels."
-                ),
+                description=("Find instances of a class. Returns instance IRIs with labels."),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -174,7 +171,7 @@ async def _handle_describe_resource(
 ) -> list[TextContent]:
     """Handle describe_resource tool call."""
     iri = arguments["iri"]
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
     include_incoming = arguments.get("include_incoming", True)
 
     # Get outgoing triples (resource as subject)
@@ -219,9 +216,9 @@ async def _handle_search_classes(
     arguments: dict[str, Any],
 ) -> list[TextContent]:
     """Handle search_classes tool call."""
-    pattern: Optional[str] = arguments.get("pattern")
+    pattern: str | None = arguments.get("pattern")
     limit = arguments.get("limit", 100)
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     result = await backend.search_classes(pattern, limit, repository_id)
 
@@ -240,11 +237,11 @@ async def _handle_search_properties(
     arguments: dict[str, Any],
 ) -> list[TextContent]:
     """Handle search_properties tool call."""
-    pattern: Optional[str] = arguments.get("pattern")
-    domain: Optional[str] = arguments.get("domain")
-    range_: Optional[str] = arguments.get("range")
+    pattern: str | None = arguments.get("pattern")
+    domain: str | None = arguments.get("domain")
+    range_: str | None = arguments.get("range")
     limit = arguments.get("limit", 100)
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     result = await backend.search_properties(pattern, domain, range_, limit, repository_id)
 
@@ -267,7 +264,7 @@ async def _handle_find_instances(
     """Handle find_instances tool call."""
     class_iri = arguments["class_iri"]
     limit = arguments.get("limit", 100)
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     result = await backend.find_instances(class_iri, limit, repository_id)
 
@@ -286,7 +283,7 @@ async def _handle_get_schema_summary(
     arguments: dict[str, Any],
 ) -> list[TextContent]:
     """Handle get_schema_summary tool call."""
-    repository_id: Optional[str] = arguments.get("repository_id")
+    repository_id: str | None = arguments.get("repository_id")
 
     summary = await backend.get_schema_summary(repository_id)
 

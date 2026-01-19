@@ -1,9 +1,5 @@
 """Tests for configuration module."""
 
-import os
-
-import pytest
-
 from rdf4j_mcp.config import BackendType, Settings, configure, get_settings
 
 
@@ -68,6 +64,7 @@ class TestGlobalSettings:
         """Test get_settings returns a Settings instance."""
         # Reset global settings
         import rdf4j_mcp.config as config_module
+
         config_module._settings = None
 
         settings = get_settings()
@@ -76,6 +73,7 @@ class TestGlobalSettings:
     def test_configure_sets_global(self):
         """Test configure sets global settings."""
         import rdf4j_mcp.config as config_module
+
         config_module._settings = None
 
         custom = Settings(query_timeout=99)
@@ -90,6 +88,7 @@ class TestGlobalSettings:
     def test_get_settings_caches(self):
         """Test get_settings caches the instance."""
         import rdf4j_mcp.config as config_module
+
         config_module._settings = None
 
         settings1 = get_settings()
