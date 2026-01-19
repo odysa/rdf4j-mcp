@@ -5,3 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.scripts]
+rdf4j-mcp = "rdf4j_mcp:main"
+
+[dependency-groups]
+dev = ["ty>=0.0.1a7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rdf4j_mcp"]
