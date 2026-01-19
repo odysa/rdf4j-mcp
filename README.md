@@ -11,6 +11,9 @@ A Model Context Protocol (MCP) server for knowledge graph exploration and SPARQL
 git clone <repository-url>
 cd rdf4j-mcp
 pip install -e .
+
+# Or using uv
+uv pip install -e .
 ```
 
 ### Run with Local Backend
@@ -21,6 +24,9 @@ rdf4j-mcp --backend local
 
 # Or load an existing RDF file
 rdf4j-mcp --backend local --store-path data.ttl --store-format turtle
+
+# Or using uv
+uv run rdf4j-mcp --backend local
 ```
 
 ### Run with Remote RDF4J Server
@@ -33,7 +39,9 @@ rdf4j-mcp --backend remote \
 
 ### Configure in Claude Desktop
 
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to your Claude Desktop config:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -41,6 +49,19 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
     "rdf4j": {
       "command": "rdf4j-mcp",
       "args": ["--backend", "local", "--store-path", "/path/to/data.ttl"]
+    }
+  }
+}
+```
+
+Or using uv:
+
+```json
+{
+  "mcpServers": {
+    "rdf4j-mcp": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/rdf4j-mcp", "rdf4j-mcp"]
     }
   }
 }
@@ -121,9 +142,13 @@ See the [examples](examples/) directory for:
 ```bash
 # Install dev dependencies
 pip install -e ".[dev]"
+# Or using uv
+uv sync --dev
 
 # Run tests
 pytest
+# Or using uv
+uv run pytest
 
 # Run linter
 ruff check src tests

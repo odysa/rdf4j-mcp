@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class RDF4JMCPServer:
     """MCP Server for RDF4J knowledge graph operations."""
 
-    def __init__(self, settings: Optional[Settings] = None):
+    def __init__(self, settings: Settings | None = None):
         """Initialize the server.
 
         Args:
@@ -35,7 +35,7 @@ class RDF4JMCPServer:
         if settings:
             configure(settings)
         self._settings = get_settings()
-        self._backend: Optional[Backend] = None
+        self._backend: Backend | None = None
         self._server = Server(self._settings.server_name)
         self._setup_handlers()
 
@@ -46,10 +46,12 @@ class RDF4JMCPServer:
 
         # Register resources
         from .resources import register_resources
+
         register_resources(self._server, self._get_backend)
 
         # Register prompts
         from .prompts import register_prompts
+
         register_prompts(self._server, self._get_backend)
 
     def _register_tools(self) -> None:
@@ -214,10 +216,7 @@ class RDF4JMCPServer:
                 ),
                 Tool(
                     name="find_instances",
-                    description=(
-                        "Find instances of a class. "
-                        "Returns instance IRIs with labels."
-                    ),
+                    description=("Find instances of a class. Returns instance IRIs with labels."),
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -329,6 +328,7 @@ class RDF4JMCPServer:
         async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             """Handle tool calls."""
             import json
+
             backend = self._get_backend()
             settings = self._settings
 
@@ -374,16 +374,14 @@ class RDF4JMCPServer:
             elif name == "get_namespaces":
                 repo_id = arguments.get("repository_id")
                 namespaces = await backend.get_namespaces(repo_id)
-                sparql_prefixes = "\n".join([
-                    f"PREFIX {ns.prefix}: <{ns.namespace}>"
-                    for ns in namespaces if ns.prefix
-                ])
+                sparql_prefixes = "\n".join(
+                    [f"PREFIX {ns.prefix}: <{ns.namespace}>" for ns in namespaces if ns.prefix]
+                )
                 output = {
                     "type": "namespaces",
                     "count": len(namespaces),
                     "namespaces": [
-                        {"prefix": ns.prefix, "namespace": ns.namespace}
-                        for ns in namespaces
+                        {"prefix": ns.prefix, "namespace": ns.namespace} for ns in namespaces
                     ],
                     "sparql_prefixes": sparql_prefixes,
                 }
@@ -417,7 +415,9 @@ class RDF4JMCPServer:
                 output = {
                     "type": "current_repository",
                     "repository_id": current,
-                    "message": f"Current repository: {current}" if current else "No repository selected",
+                    "message": f"Current repository: {current}"
+                    if current
+                    else "No repository selected",
                 }
                 return [TextContent(type="text", text=json.dumps(output, indent=2))]
 
@@ -429,6 +429,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle sparql_select tool."""
         import json
+
         query = arguments["query"]
         repo_id = arguments.get("repository_id")
         limit = arguments.get("limit")
@@ -462,6 +463,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle sparql_ask tool."""
         import json
+
         query = arguments["query"]
         repo_id = arguments.get("repository_id")
         result = await backend.sparql_ask(query, repo_id)
@@ -505,6 +507,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle search_classes tool."""
         import json
+
         pattern = arguments.get("pattern")
         limit = arguments.get("limit", 100)
         repo_id = arguments.get("repository_id")
@@ -531,6 +534,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle search_properties tool."""
         import json
+
         pattern = arguments.get("pattern")
         domain = arguments.get("domain")
         range_ = arguments.get("range")
@@ -560,6 +564,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle find_instances tool."""
         import json
+
         class_iri = arguments["class_iri"]
         limit = arguments.get("limit", 100)
         repo_id = arguments.get("repository_id")
@@ -585,6 +590,7 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle get_schema_summary tool."""
         import json
+
         repo_id = arguments.get("repository_id")
         summary = await backend.get_schema_summary(repo_id)
 
@@ -659,7 +665,7 @@ class RDF4JMCPServer:
             await self.stop()
 
 
-def create_server(settings: Optional[Settings] = None) -> RDF4JMCPServer:
+def create_server(settings: Settings | None = None) -> RDF4JMCPServer:
     """Create a new RDF4J MCP server instance.
 
     Args:
