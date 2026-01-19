@@ -1,0 +1,196 @@
+@prefix ex: <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix schema: <http://schema.org/> .
+
+# =============================================================================
+# ONTOLOGY DEFINITION
+# =============================================================================
+
+# Classes
+ex:Person a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:comment "A human being" .
+
+ex:Organization a owl:Class ;
+    rdfs:label "Organization" ;
+    rdfs:comment "A company, institution, or other organized body" .
+
+ex:Project a owl:Class ;
+    rdfs:label "Project" ;
+    rdfs:comment "A planned endeavor with specific goals" .
+
+ex:Technology a owl:Class ;
+    rdfs:label "Technology" ;
+    rdfs:comment "A tool, framework, or technical system" .
+
+ex:Department a owl:Class ;
+    rdfs:label "Department" ;
+    rdfs:comment "A division within an organization" .
+
+# Properties
+ex:name a owl:DatatypeProperty ;
+    rdfs:label "name" ;
+    rdfs:domain ex:Person ;
+    rdfs:range xsd:string .
+
+ex:email a owl:DatatypeProperty ;
+    rdfs:label "email" ;
+    rdfs:domain ex:Person ;
+    rdfs:range xsd:string .
+
+ex:worksFor a owl:ObjectProperty ;
+    rdfs:label "works for" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Organization .
+
+ex:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Department .
+
+ex:worksOn a owl:ObjectProperty ;
+    rdfs:label "works on" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Project .
+
+ex:uses a owl:ObjectProperty ;
+    rdfs:label "uses" ;
+    rdfs:domain ex:Project ;
+    rdfs:range ex:Technology .
+
+ex:hasDepartment a owl:ObjectProperty ;
+    rdfs:label "has department" ;
+    rdfs:domain ex:Organization ;
+    rdfs:range ex:Department .
+
+ex:startDate a owl:DatatypeProperty ;
+    rdfs:label "start date" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:date .
+
+ex:budget a owl:DatatypeProperty ;
+    rdfs:label "budget" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:decimal .
+
+ex:status a owl:DatatypeProperty ;
+    rdfs:label "status" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:string .
+
+# =============================================================================
+# INSTANCE DATA
+# =============================================================================
+
+# Organization
+ex:acme a ex:Organization ;
+    ex:name "Acme Corporation" ;
+    rdfs:label "Acme Corporation" ;
+    ex:hasDepartment ex:engineering, ex:research, ex:marketing .
+
+# Departments
+ex:engineering a ex:Department ;
+    ex:name "Engineering" ;
+    rdfs:label "Engineering Department" .
+
+ex:research a ex:Department ;
+    ex:name "Research & Development" ;
+    rdfs:label "R&D Department" .
+
+ex:marketing a ex:Department ;
+    ex:name "Marketing" ;
+    rdfs:label "Marketing Department" .
+
+# Technologies
+ex:python a ex:Technology ;
+    ex:name "Python" ;
+    rdfs:label "Python Programming Language" .
+
+ex:sparql a ex:Technology ;
+    ex:name "SPARQL" ;
+    rdfs:label "SPARQL Query Language" .
+
+ex:rdf4j a ex:Technology ;
+    ex:name "RDF4J" ;
+    rdfs:label "Eclipse RDF4J Framework" .
+
+ex:react a ex:Technology ;
+    ex:name "React" ;
+    rdfs:label "React JavaScript Library" .
+
+ex:kubernetes a ex:Technology ;
+    ex:name "Kubernetes" ;
+    rdfs:label "Kubernetes Container Orchestration" .
+
+# People
+ex:alice a ex:Person ;
+    ex:name "Alice Johnson" ;
+    ex:email "alice@acme.com" ;
+    ex:worksFor ex:acme ;
+    ex:memberOf ex:engineering ;
+    ex:worksOn ex:kg-platform, ex:data-pipeline .
+
+ex:bob a ex:Person ;
+    ex:name "Bob Smith" ;
+    ex:email "bob@acme.com" ;
+    ex:worksFor ex:acme ;
+    ex:memberOf ex:research ;
+    ex:worksOn ex:kg-platform .
+
+ex:carol a ex:Person ;
+    ex:name "Carol Williams" ;
+    ex:email "carol@acme.com" ;
+    ex:worksFor ex:acme ;
+    ex:memberOf ex:engineering ;
+    ex:worksOn ex:web-dashboard, ex:data-pipeline .
+
+ex:david a ex:Person ;
+    ex:name "David Brown" ;
+    ex:email "david@acme.com" ;
+    ex:worksFor ex:acme ;
+    ex:memberOf ex:research ;
+    ex:worksOn ex:ml-models .
+
+ex:emma a ex:Person ;
+    ex:name "Emma Davis" ;
+    ex:email "emma@acme.com" ;
+    ex:worksFor ex:acme ;
+    ex:memberOf ex:marketing ;
+    ex:worksOn ex:web-dashboard .
+
+# Projects
+ex:kg-platform a ex:Project ;
+    ex:name "Knowledge Graph Platform" ;
+    rdfs:label "KG Platform" ;
+    ex:startDate "2024-01-15"^^xsd:date ;
+    ex:budget "500000"^^xsd:decimal ;
+    ex:status "active" ;
+    ex:uses ex:python, ex:sparql, ex:rdf4j .
+
+ex:data-pipeline a ex:Project ;
+    ex:name "Data Pipeline Infrastructure" ;
+    rdfs:label "Data Pipeline" ;
+    ex:startDate "2024-03-01"^^xsd:date ;
+    ex:budget "250000"^^xsd:decimal ;
+    ex:status "active" ;
+    ex:uses ex:python, ex:kubernetes .
+
+ex:web-dashboard a ex:Project ;
+    ex:name "Analytics Web Dashboard" ;
+    rdfs:label "Web Dashboard" ;
+    ex:startDate "2024-02-01"^^xsd:date ;
+    ex:budget "150000"^^xsd:decimal ;
+    ex:status "active" ;
+    ex:uses ex:react, ex:python .
+
+ex:ml-models a ex:Project ;
+    ex:name "ML Model Development" ;
+    rdfs:label "ML Models" ;
+    ex:startDate "2023-09-01"^^xsd:date ;
+    ex:budget "750000"^^xsd:decimal ;
+    ex:status "completed" ;
+    ex:uses ex:python .

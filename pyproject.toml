@@ -1,20 +1,91 @@
-[project]
-name = "rdf4j-mcp"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
-
-[project.scripts]
-rdf4j-mcp = "rdf4j_mcp:main"
-
-[dependency-groups]
-dev = ["ty>=0.0.1a7"]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project]
+name = "rdf4j-mcp"
+version = "0.1.0"
+description = "MCP server for RDF4J knowledge graph exploration and SPARQL querying"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "RDF4J MCP Contributors" }
+]
+keywords = ["mcp", "rdf4j", "sparql", "knowledge-graph", "semantic-web"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "mcp>=1.0.0",
+    "rdf4j-python>=0.1.0",
+    "rdflib>=7.0.0",
+    "pyoxigraph>=0.3.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pre-commit>=4.0",
+    "ty>=0.0.1a7",
+]
+
+[project.scripts]
+rdf4j-mcp = "rdf4j_mcp.server:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14",
+    "pre-commit>=4.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.9",
+    "ty>=0.0.1a7",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/rdf4j_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/rdf4j_mcp/server.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["rdf4j_mcp.tools", "rdf4j_mcp.prompts", "rdf4j_mcp.resources"]
+disable_error_code = ["misc"]
