@@ -242,7 +242,7 @@ class RemoteBackend(Backend):
         if isinstance(classes_result, og.QuerySolutions):
             for solution in classes_result:
                 if solution[0] is not None:
-                    total_classes = int(solution[0].value)  # type: ignore
+                    total_classes = int(solution[0].value)
 
         # Count properties
         props_query = """
@@ -258,7 +258,7 @@ class RemoteBackend(Backend):
         if isinstance(props_result, og.QuerySolutions):
             for solution in props_result:
                 if solution[0] is not None:
-                    total_properties = int(solution[0].value)  # type: ignore
+                    total_properties = int(solution[0].value)
 
         # Count subjects
         subjects_query = "SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?s ?p ?o }"
@@ -267,7 +267,7 @@ class RemoteBackend(Backend):
         if isinstance(subjects_result, og.QuerySolutions):
             for solution in subjects_result:
                 if solution[0] is not None:
-                    total_subjects = int(solution[0].value)  # type: ignore
+                    total_subjects = int(solution[0].value)
 
         # Count objects
         objects_query = "SELECT (COUNT(DISTINCT ?o) AS ?count) WHERE { ?s ?p ?o }"
@@ -276,7 +276,7 @@ class RemoteBackend(Backend):
         if isinstance(objects_result, og.QuerySolutions):
             for solution in objects_result:
                 if solution[0] is not None:
-                    total_objects = int(solution[0].value)  # type: ignore
+                    total_objects = int(solution[0].value)
 
         return StatisticsInfo(
             total_statements=total_statements,

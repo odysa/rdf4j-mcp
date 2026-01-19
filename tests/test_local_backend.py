@@ -255,8 +255,9 @@ class TestContextManager:
 
     async def test_context_manager(self):
         """Test using backend as context manager."""
-        async with LocalBackend() as backend:
-            assert backend._graph is not None
+        local_backend = LocalBackend()
+        async with local_backend as backend:
+            assert local_backend._graph is not None
             repos = await backend.list_repositories()
             assert len(repos) == 1
-        assert backend._graph is None
+        assert local_backend._graph is None

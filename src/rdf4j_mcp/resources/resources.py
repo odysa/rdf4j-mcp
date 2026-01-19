@@ -5,6 +5,7 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.types import Resource, TextResourceContents
+from pydantic import AnyUrl
 
 from ..backends.base import Backend
 
@@ -23,7 +24,7 @@ def register_resources(server: Server, get_backend: Any) -> None:
         backend: Backend = get_backend()
         resources = [
             Resource(
-                uri="rdf4j://repositories",
+                uri=AnyUrl("rdf4j://repositories"),
                 name="Repository List",
                 description="List of all available RDF repositories",
                 mimeType="application/json",
@@ -37,19 +38,19 @@ def register_resources(server: Server, get_backend: Any) -> None:
                 resources.extend(
                     [
                         Resource(
-                            uri=f"rdf4j://repository/{repo.id}/schema",
+                            uri=AnyUrl(f"rdf4j://repository/{repo.id}/schema"),
                             name=f"{repo.title} - Schema",
                             description=f"Schema summary for repository '{repo.id}'",
                             mimeType="application/json",
                         ),
                         Resource(
-                            uri=f"rdf4j://repository/{repo.id}/namespaces",
+                            uri=AnyUrl(f"rdf4j://repository/{repo.id}/namespaces"),
                             name=f"{repo.title} - Namespaces",
                             description=f"Namespace prefixes for repository '{repo.id}'",
                             mimeType="application/json",
                         ),
                         Resource(
-                            uri=f"rdf4j://repository/{repo.id}/statistics",
+                            uri=AnyUrl(f"rdf4j://repository/{repo.id}/statistics"),
                             name=f"{repo.title} - Statistics",
                             description=f"Statistics for repository '{repo.id}'",
                             mimeType="application/json",
@@ -95,7 +96,7 @@ async def _read_repositories(backend: Backend) -> TextResourceContents:
     }
 
     return TextResourceContents(
-        uri="rdf4j://repositories",
+        uri=AnyUrl("rdf4j://repositories"),
         mimeType="application/json",
         text=json.dumps(content, indent=2),
     )
@@ -148,7 +149,7 @@ async def _read_schema(backend: Backend, repo_id: str, uri: str) -> TextResource
     }
 
     return TextResourceContents(
-        uri=uri,
+        uri=AnyUrl(uri),
         mimeType="application/json",
         text=json.dumps(content, indent=2),
     )
@@ -172,7 +173,7 @@ async def _read_namespaces(backend: Backend, repo_id: str, uri: str) -> TextReso
     }
 
     return TextResourceContents(
-        uri=uri,
+        uri=AnyUrl(uri),
         mimeType="application/json",
         text=json.dumps(content, indent=2),
     )
@@ -193,7 +194,7 @@ async def _read_statistics(backend: Backend, repo_id: str, uri: str) -> TextReso
     }
 
     return TextResourceContents(
-        uri=uri,
+        uri=AnyUrl(uri),
         mimeType="application/json",
         text=json.dumps(content, indent=2),
     )
