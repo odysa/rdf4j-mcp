@@ -1,6 +1,5 @@
 """Tests for CLI argument parsing."""
 
-import argparse
 import sys
 from unittest.mock import AsyncMock, patch
 
