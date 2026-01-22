@@ -682,29 +682,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="RDF4J MCP Server - Knowledge graph exploration via MCP"
     )
+    # Positional argument for server URL (simplified configuration)
     parser.add_argument(
-        "--backend",
-        choices=["local", "remote"],
-        default="local",
-        help="Backend type (default: local)",
-    )
-    parser.add_argument(
-        "--server-url",
-        default="http://localhost:8080/rdf4j-server",
-        help="RDF4J server URL (for remote backend)",
+        "server_url",
+        nargs="?",
+        help="RDF4J server URL (e.g., http://localhost:8080/rdf4j-server)",
     )
     parser.add_argument(
         "--repository",
         help="Default repository ID",
-    )
-    parser.add_argument(
-        "--store-path",
-        help="Path to local RDF file (for local backend)",
-    )
-    parser.add_argument(
-        "--store-format",
-        default="turtle",
-        help="Format of local RDF file (default: turtle)",
     )
     parser.add_argument(
         "--debug",
@@ -717,12 +703,15 @@ def main() -> None:
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # Validate that server URL is provided
+    if not args.server_url:
+        parser.error("server_url is required")
+
+    # Always use remote backend with the provided server URL
     settings = Settings(
-        backend_type=BackendType(args.backend),
+        backend_type=BackendType.REMOTE,
         rdf4j_server_url=args.server_url,
         default_repository=args.repository,
-        local_store_path=args.store_path,
-        local_store_format=args.store_format,
     )
 
     server = create_server(settings)
