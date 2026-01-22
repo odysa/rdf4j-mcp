@@ -13,7 +13,7 @@ RDF4J MCP Server connects Claude (or any MCP-compatible AI) to your knowledge gr
 - **Query your data** - Ask questions in natural language, get SPARQL queries executed automatically
 - **Explore schemas** - Understand ontologies, classes, properties, and relationships
 - **Discover insights** - Find patterns and connections in your knowledge graph
-- **Two backends** - Use local files (rdflib) for development or connect to RDF4J servers for production
+- **Production-ready** - Connect to RDF4J servers for robust knowledge graph access
 
 ## Quick Demo
 
@@ -25,21 +25,20 @@ git clone https://github.com/your-org/rdf4j-mcp.git
 cd rdf4j-mcp
 pip install -e .
 
-# 2. Run with sample data
-rdf4j-mcp --backend local --store-path examples/sample_data.ttl
+# 2. Start RDF4J server (Docker)
+docker run -d -p 8080:8080 eclipse/rdf4j-workbench
+
+# 3. Connect to it
+rdf4j-mcp http://localhost:8080/rdf4j-server
 ```
 
 Then configure Claude Desktop (see [Setup Guide](#claude-desktop-configuration)) and try these prompts:
 
+> "What repositories are available?"
+
 > "What classes and properties are in this knowledge graph?"
 
 > "Find all people and the projects they work on"
-
-> "Who works on the Knowledge Graph Platform project?"
-
-> "Show me the project with the highest budget"
-
-The sample data includes a fictional company with people, projects, departments, and technologies - perfect for exploring how it all works.
 
 ### Try It Programmatically
 
@@ -95,35 +94,17 @@ uv sync
 
 ## Usage
 
-### Local Backend (Recommended for Getting Started)
-
-Perfect for development, testing, and small-to-medium datasets:
-
-```bash
-# Start with sample data
-rdf4j-mcp --backend local --store-path examples/sample_data.ttl
-
-# Start with your own data
-rdf4j-mcp --backend local --store-path /path/to/your/data.ttl
-
-# Empty in-memory store (for testing)
-rdf4j-mcp --backend local
-```
-
-**Supported formats:** Turtle (.ttl), RDF/XML (.rdf), N-Triples (.nt), N3 (.n3), JSON-LD (.jsonld), N-Quads (.nq), TriG (.trig)
-
-### Remote Backend (Production)
-
-Connect to an RDF4J server for large datasets and shared access:
+Connect to an RDF4J server for knowledge graph access:
 
 ```bash
 # Start RDF4J server (Docker)
 docker run -d -p 8080:8080 eclipse/rdf4j-workbench
 
 # Connect to it
-rdf4j-mcp --backend remote \
-  --server-url http://localhost:8080/rdf4j-server \
-  --repository my-repo
+rdf4j-mcp http://localhost:8080/rdf4j-server
+
+# Connect with a default repository
+rdf4j-mcp http://localhost:8080/rdf4j-server --repository my-repo
 ```
 
 ## Claude Desktop Configuration
@@ -136,14 +117,27 @@ Add to your Claude Desktop config file:
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Linux | `~/.config/Claude/claude_desktop_config.json` |
 
-### Local Backend Config
+### Basic Configuration
 
 ```json
 {
   "mcpServers": {
     "rdf4j": {
       "command": "rdf4j-mcp",
-      "args": ["--backend", "local", "--store-path", "/path/to/data.ttl"]
+      "args": ["http://localhost:8080/rdf4j-server"]
+    }
+  }
+}
+```
+
+### With Default Repository
+
+```json
+{
+  "mcpServers": {
+    "rdf4j": {
+      "command": "rdf4j-mcp",
+      "args": ["http://localhost:8080/rdf4j-server", "--repository", "my-repo"]
     }
   }
 }
@@ -156,24 +150,7 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "rdf4j": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/rdf4j-mcp", "rdf4j-mcp", "--backend", "local"]
-    }
-  }
-}
-```
-
-### Remote Backend Config
-
-```json
-{
-  "mcpServers": {
-    "rdf4j": {
-      "command": "rdf4j-mcp",
-      "env": {
-        "RDF4J_MCP_BACKEND_TYPE": "remote",
-        "RDF4J_MCP_RDF4J_SERVER_URL": "http://localhost:8080/rdf4j-server",
-        "RDF4J_MCP_DEFAULT_REPOSITORY": "my-repo"
-      }
+      "args": ["run", "--directory", "/path/to/rdf4j-mcp", "rdf4j-mcp", "http://localhost:8080/rdf4j-server"]
     }
   }
 }
@@ -223,14 +200,13 @@ After editing the config, restart Claude Desktop.
 ### CLI Arguments
 
 ```
-rdf4j-mcp [OPTIONS]
+rdf4j-mcp SERVER_URL [OPTIONS]
+
+Arguments:
+  SERVER_URL                RDF4J server URL (e.g., http://localhost:8080/rdf4j-server)
 
 Options:
-  --backend {local,remote}  Backend type (default: local)
-  --server-url URL          RDF4J server URL
   --repository ID           Default repository ID
-  --store-path PATH         Path to local RDF file
-  --store-format FORMAT     RDF format (turtle, xml, n3, nt, jsonld, nquads, trig)
   --debug                   Enable debug logging
 ```
 
@@ -240,11 +216,8 @@ All variables use the `RDF4J_MCP_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BACKEND_TYPE` | `local` | Backend type: `local` or `remote` |
 | `RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
 | `DEFAULT_REPOSITORY` | - | Default repository ID |
-| `LOCAL_STORE_PATH` | - | Path to local RDF file |
-| `LOCAL_STORE_FORMAT` | `turtle` | RDF format for local files |
 | `QUERY_TIMEOUT` | `30` | Query timeout in seconds |
 | `DEFAULT_LIMIT` | `100` | Default LIMIT for queries |
 | `MAX_LIMIT` | `10000` | Maximum allowed LIMIT |
@@ -298,7 +271,6 @@ pip install -e ".[dev]"
 
 ### "Repository not found" error
 
-For remote backend:
 1. Verify RDF4J server is running: `curl http://localhost:8080/rdf4j-server/repositories`
 2. Check repository exists in RDF4J Workbench
 3. Verify `--repository` argument matches the repository ID
@@ -308,7 +280,7 @@ For remote backend:
 Increase timeout via environment variable:
 ```bash
 export RDF4J_MCP_QUERY_TIMEOUT=120
-rdf4j-mcp --backend remote ...
+rdf4j-mcp http://localhost:8080/rdf4j-server
 ```
 
 ### Claude Desktop not detecting the server
