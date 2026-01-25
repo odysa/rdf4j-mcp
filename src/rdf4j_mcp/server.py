@@ -11,9 +11,8 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from .backends.base import Backend
-from .backends.local import LocalBackend
 from .backends.remote import RemoteBackend
-from .config import BackendType, Settings, configure, get_settings
+from .config import Settings, configure, get_settings
 
 # Configure logging
 logging.basicConfig(
@@ -625,16 +624,10 @@ class RDF4JMCPServer:
         """Create and connect to the backend."""
         settings = self._settings
 
-        if settings.backend_type == BackendType.LOCAL:
-            backend = LocalBackend(
-                store_path=settings.local_store_path,
-                store_format=settings.local_store_format,
-            )
-        else:
-            backend = RemoteBackend(
-                server_url=settings.rdf4j_server_url,
-                default_repository=settings.default_repository,
-            )
+        backend = RemoteBackend(
+            server_url=settings.rdf4j_server_url,
+            default_repository=settings.default_repository,
+        )
 
         await backend.connect()
         return backend
@@ -642,7 +635,7 @@ class RDF4JMCPServer:
     async def start(self) -> None:
         """Start the server."""
         self._backend = await self._create_backend()
-        logger.info(f"RDF4J MCP Server started with {self._settings.backend_type.value} backend")
+        logger.info(f"RDF4J MCP Server started, connected to {self._settings.rdf4j_server_url}")
 
     async def stop(self) -> None:
         """Stop the server."""
@@ -683,28 +676,13 @@ def main() -> None:
         description="RDF4J MCP Server - Knowledge graph exploration via MCP"
     )
     parser.add_argument(
-        "--backend",
-        choices=["local", "remote"],
-        default="local",
-        help="Backend type (default: local)",
-    )
-    parser.add_argument(
         "--server-url",
         default="http://localhost:8080/rdf4j-server",
-        help="RDF4J server URL (for remote backend)",
+        help="RDF4J server URL (default: http://localhost:8080/rdf4j-server)",
     )
     parser.add_argument(
         "--repository",
         help="Default repository ID",
-    )
-    parser.add_argument(
-        "--store-path",
-        help="Path to local RDF file (for local backend)",
-    )
-    parser.add_argument(
-        "--store-format",
-        default="turtle",
-        help="Format of local RDF file (default: turtle)",
     )
     parser.add_argument(
         "--debug",
@@ -718,11 +696,8 @@ def main() -> None:
         logging.getLogger().setLevel(logging.DEBUG)
 
     settings = Settings(
-        backend_type=BackendType(args.backend),
         rdf4j_server_url=args.server_url,
         default_repository=args.repository,
-        local_store_path=args.store_path,
-        local_store_format=args.store_format,
     )
 
     server = create_server(settings)

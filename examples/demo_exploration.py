@@ -4,26 +4,27 @@ Exploration Demo: Knowledge Graph Discovery
 
 This demo shows how to use the exploration features to discover
 and understand a knowledge graph schema.
+
+Prerequisites:
+- A running RDF4J server at the configured URL
+- A repository with sample data loaded
 """
 
 import asyncio
-from pathlib import Path
 
-from rdf4j_mcp.config import BackendType, Settings
+from rdf4j_mcp.config import Settings
 from rdf4j_mcp.server import RDF4JMCPServer
 
 
 async def main():
-    sample_data = Path(__file__).parent / "sample_data.ttl"
-
     print("=" * 60)
     print("Knowledge Graph Exploration Demo")
     print("=" * 60)
 
+    # Adjust the URL and repository to match your RDF4J server
     settings = Settings(
-        backend_type=BackendType.LOCAL,
-        local_store_path=str(sample_data),
-        local_store_format="turtle",
+        rdf4j_server_url="http://localhost:8080/rdf4j-server",
+        default_repository="test-repo",
     )
 
     server = RDF4JMCPServer(settings)
@@ -50,14 +51,9 @@ async def main():
         print("=" * 60)
 
         classes = await backend.search_classes()
-        owl_classes = [
-            b
-            for b in (classes.bindings or [])
-            if "example.org" in b.get("class", {}).get("value", "")
-        ]
 
-        print(f"\nFound {len(owl_classes)} custom classes:")
-        for cls in owl_classes:
+        print(f"\nFound {len(classes.bindings or [])} classes:")
+        for cls in (classes.bindings or [])[:10]:
             iri = cls.get("class", {}).get("value", "")
             label = cls.get("label", {}).get("value", "No label")
             comment = cls.get("comment", {}).get("value", "")
@@ -66,108 +62,28 @@ async def main():
             if comment:
                 print(f"   Description: {comment}")
 
-        # Step 3: Explore Properties for Each Class
-        print("\n\n3. CLASS-PROPERTY RELATIONSHIPS")
+        # Step 3: Explore Properties
+        print("\n\n3. DISCOVERING PROPERTIES")
         print("=" * 60)
 
-        for cls in owl_classes:
-            class_iri = cls.get("class", {}).get("value", "")
-            class_name = class_iri.split("/")[-1]
+        props = await backend.search_properties(limit=10)
 
-            props = await backend.search_properties(domain=class_iri)
-            class_props = [
-                p
-                for p in (props.bindings or [])
-                if p.get("domain", {}).get("value", "") == class_iri
-            ]
+        for prop in props.bindings or []:
+            prop_iri = prop.get("property", {}).get("value", "")
+            prop_name = prop_iri.split("/")[-1]
+            domain = prop.get("domain", {}).get("value", "").split("/")[-1] or "Any"
+            range_val = prop.get("range", {}).get("value", "").split("/")[-1] or "Any"
+            print(f"   {prop_name}: {domain} -> {range_val}")
 
-            if class_props:
-                print(f"\n{class_name}:")
-                for prop in class_props:
-                    prop_name = prop.get("property", {}).get("value", "").split("/")[-1]
-                    range_val = prop.get("range", {}).get("value", "")
-                    range_name = range_val.split("/")[-1] if range_val else "Any"
-                    print(f"   -> {prop_name} -> {range_name}")
-
-        # Step 4: Explore Instance Distribution
-        print("\n\n4. INSTANCE DISTRIBUTION")
+        # Step 4: Repository List
+        print("\n\n4. AVAILABLE REPOSITORIES")
         print("=" * 60)
 
-        for cls in owl_classes:
-            class_iri = cls.get("class", {}).get("value", "")
-            class_name = class_iri.split("/")[-1]
-
-            instances = await backend.find_instances(class_iri)
-            count = len(instances.bindings or [])
-
-            if count > 0:
-                print(f"\n{class_name}: {count} instances")
-                for inst in (instances.bindings or [])[:3]:
-                    inst_name = inst.get("instance", {}).get("value", "").split("/")[-1]
-                    label = inst.get("label", {}).get("value", "")
-                    display = f"{inst_name}"
-                    if label:
-                        display += f" ({label})"
-                    print(f"   - {display}")
-                if count > 3:
-                    print(f"   ... and {count - 3} more")
-
-        # Step 5: Relationship Analysis
-        print("\n\n5. RELATIONSHIP ANALYSIS")
-        print("=" * 60)
-
-        # Find all object properties and their usage
-        query = """
-        PREFIX ex: <http://example.org/>
-        PREFIX owl: <http://www.w3.org/2002/07/owl#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-        SELECT ?prop ?domain ?range (COUNT(*) as ?usage)
-        WHERE {
-            ?prop a owl:ObjectProperty ;
-                  rdfs:domain ?domain ;
-                  rdfs:range ?range .
-            ?s ?prop ?o .
-        }
-        GROUP BY ?prop ?domain ?range
-        ORDER BY DESC(?usage)
-        """
-        result = await backend.sparql_select(query)
-
-        print("\nObject Property Usage:")
-        for binding in result.bindings or []:
-            prop = binding.get("prop", {}).get("value", "").split("/")[-1]
-            domain = binding.get("domain", {}).get("value", "").split("/")[-1]
-            range_ = binding.get("range", {}).get("value", "").split("/")[-1]
-            usage = binding.get("usage", {}).get("value", "0")
-            print(f"   {domain} --[{prop}]--> {range_}  (used {usage}x)")
-
-        # Step 6: Network Connectivity
-        print("\n\n6. CONNECTIVITY ANALYSIS")
-        print("=" * 60)
-
-        # Find entities with most connections
-        query = """
-        PREFIX ex: <http://example.org/>
-
-        SELECT ?entity ?type (COUNT(?related) as ?connections)
-        WHERE {
-            ?entity a ?type .
-            { ?entity ?p ?related } UNION { ?related ?p ?entity }
-            FILTER(?type IN (ex:Person, ex:Project, ex:Organization))
-        }
-        GROUP BY ?entity ?type
-        ORDER BY DESC(?connections)
-        LIMIT 10
-        """
-        result = await backend.sparql_select(query)
-
-        print("\nMost Connected Entities:")
-        for binding in result.bindings or []:
-            entity = binding.get("entity", {}).get("value", "").split("/")[-1]
-            type_ = binding.get("type", {}).get("value", "").split("/")[-1]
-            conns = binding.get("connections", {}).get("value", "0")
-            print(f"   {entity} ({type_}): {conns} connections")
+        repos = await backend.list_repositories()
+        for repo in repos:
+            readable = "R" if repo.readable else "-"
+            writable = "W" if repo.writable else "-"
+            print(f"   [{readable}{writable}] {repo.id}: {repo.title}")
 
         print("\n" + "=" * 60)
         print("Exploration completed!")
