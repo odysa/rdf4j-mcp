@@ -4,12 +4,15 @@ SPARQL Query Demo: Common Query Patterns
 
 This demo shows various SPARQL query patterns commonly used
 when working with knowledge graphs.
+
+Prerequisites:
+- A running RDF4J server at the configured URL
+- A repository with sample data loaded
 """
 
 import asyncio
-from pathlib import Path
 
-from rdf4j_mcp.config import BackendType, Settings
+from rdf4j_mcp.config import Settings
 from rdf4j_mcp.server import RDF4JMCPServer
 
 
@@ -38,16 +41,14 @@ async def run_query(backend, title, query, format_func=None):
 
 
 async def main():
-    sample_data = Path(__file__).parent / "sample_data.ttl"
-
     print("=" * 60)
     print("SPARQL Query Patterns Demo")
     print("=" * 60)
 
+    # Adjust the URL and repository to match your RDF4J server
     settings = Settings(
-        backend_type=BackendType.LOCAL,
-        local_store_path=str(sample_data),
-        local_store_format="turtle",
+        rdf4j_server_url="http://localhost:8080/rdf4j-server",
+        default_repository="test-repo",
     )
 
     server = RDF4JMCPServer(settings)
@@ -56,228 +57,126 @@ async def main():
     try:
         backend = server._get_backend()
 
-        # Query 1: Basic SELECT
+        # Query 1: Basic SELECT - Find all classes
         await run_query(
             backend,
-            "1. BASIC SELECT - List all people",
+            "1. BASIC SELECT - List all classes",
             """
-            PREFIX ex: <http://example.org/>
-            SELECT ?name ?email
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?class ?label
             WHERE {
-                ?person a ex:Person ;
-                        ex:name ?name ;
-                        ex:email ?email .
+                ?class a owl:Class .
+                OPTIONAL { ?class rdfs:label ?label }
             }
-            ORDER BY ?name
+            LIMIT 10
             """,
-            lambda b: f"{b['name']['value']} <{b['email']['value']}>",
+            lambda b: (
+                f"{b.get('class', {}).get('value', '').split('/')[-1]}: "
+                f"{b.get('label', {}).get('value', 'No label')}"
+            ),
         )
 
         # Query 2: OPTIONAL clause
         await run_query(
             backend,
-            "2. OPTIONAL - People with optional department",
+            "2. OPTIONAL - Properties with optional domain/range",
             """
-            PREFIX ex: <http://example.org/>
-            SELECT ?name ?deptName
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            SELECT ?prop ?domain ?range
             WHERE {
-                ?person a ex:Person ;
-                        ex:name ?name .
-                OPTIONAL {
-                    ?person ex:memberOf ?dept .
-                    ?dept ex:name ?deptName .
-                }
+                ?prop a rdf:Property .
+                OPTIONAL { ?prop rdfs:domain ?domain }
+                OPTIONAL { ?prop rdfs:range ?range }
             }
-            ORDER BY ?name
-            """,
-            lambda b: f"{b['name']['value']} - {b.get('deptName', {}).get('value', 'N/A')}",
-        )
-
-        # Query 3: FILTER
-        await run_query(
-            backend,
-            "3. FILTER - Projects with budget over $200,000",
-            """
-            PREFIX ex: <http://example.org/>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            SELECT ?name ?budget
-            WHERE {
-                ?project a ex:Project ;
-                         ex:name ?name ;
-                         ex:budget ?budget .
-                FILTER(?budget > 200000)
-            }
-            ORDER BY DESC(?budget)
-            """,
-            lambda b: f"{b['name']['value']}: ${float(b['budget']['value']):,.0f}",
-        )
-
-        # Query 4: Aggregation with GROUP BY
-        await run_query(
-            backend,
-            "4. AGGREGATION - Team size per project",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?projectName (COUNT(?person) AS ?teamSize)
-            WHERE {
-                ?project a ex:Project ;
-                         ex:name ?projectName .
-                ?person ex:worksOn ?project .
-            }
-            GROUP BY ?project ?projectName
-            ORDER BY DESC(?teamSize)
-            """,
-            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members",
-        )
-
-        # Query 5: HAVING clause
-        await run_query(
-            backend,
-            "5. HAVING - Projects with 2+ team members",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?projectName (COUNT(?person) AS ?teamSize)
-            WHERE {
-                ?project a ex:Project ;
-                         ex:name ?projectName .
-                ?person ex:worksOn ?project .
-            }
-            GROUP BY ?project ?projectName
-            HAVING (COUNT(?person) >= 2)
-            ORDER BY DESC(?teamSize)
-            """,
-            lambda b: f"{b['projectName']['value']}: {b['teamSize']['value']} members",
-        )
-
-        # Query 6: Subquery
-        await run_query(
-            backend,
-            "6. SUBQUERY - People working on the most expensive project",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?personName ?projectName ?budget
-            WHERE {
-                {
-                    SELECT ?project (MAX(?b) AS ?maxBudget)
-                    WHERE {
-                        ?project a ex:Project ;
-                                 ex:budget ?b .
-                    }
-                    GROUP BY ?project
-                    ORDER BY DESC(?maxBudget)
-                    LIMIT 1
-                }
-                ?project ex:name ?projectName ;
-                         ex:budget ?budget .
-                ?person ex:worksOn ?project ;
-                        ex:name ?personName .
-            }
+            LIMIT 10
             """,
             lambda b: (
-                f"{b['personName']['value']} on {b['projectName']['value']} "
-                f"(${float(b['budget']['value']):,.0f})"
+                f"{b.get('prop', {}).get('value', '').split('/')[-1]} - "
+                f"domain: {b.get('domain', {}).get('value', 'Any').split('/')[-1]}, "
+                f"range: {b.get('range', {}).get('value', 'Any').split('/')[-1]}"
             ),
         )
 
-        # Query 7: UNION
+        # Query 3: Aggregation with COUNT
         await run_query(
             backend,
-            "7. UNION - All things with names (people and projects)",
+            "3. AGGREGATION - Count instances per class",
             """
-            PREFIX ex: <http://example.org/>
-            SELECT ?type ?name
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            SELECT ?class (COUNT(?instance) AS ?count)
+            WHERE {
+                ?instance a ?class .
+            }
+            GROUP BY ?class
+            ORDER BY DESC(?count)
+            LIMIT 10
+            """,
+            lambda b: (
+                f"{b.get('class', {}).get('value', '').split('/')[-1]}: "
+                f"{b.get('count', {}).get('value', '0')} instances"
+            ),
+        )
+
+        # Query 4: FILTER
+        await run_query(
+            backend,
+            "4. FILTER - Resources with specific patterns",
+            """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?resource ?label
+            WHERE {
+                ?resource rdfs:label ?label .
+                FILTER(STRLEN(?label) > 5)
+            }
+            LIMIT 10
+            """,
+        )
+
+        # Query 5: UNION
+        await run_query(
+            backend,
+            "5. UNION - Find all classes and properties",
+            """
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            SELECT ?entity ?type
             WHERE {
                 {
-                    ?entity a ex:Person ;
-                            ex:name ?name .
-                    BIND("Person" AS ?type)
+                    ?entity a owl:Class .
+                    BIND("Class" AS ?type)
                 }
                 UNION
                 {
-                    ?entity a ex:Project ;
-                            ex:name ?name .
-                    BIND("Project" AS ?type)
+                    ?entity a rdf:Property .
+                    BIND("Property" AS ?type)
                 }
             }
-            ORDER BY ?type ?name
-            """,
-            lambda b: f"[{b['type']['value']}] {b['name']['value']}",
-        )
-
-        # Query 8: Property Path
-        await run_query(
-            backend,
-            "8. PROPERTY PATH - People connected to organizations (via department)",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?personName ?orgName
-            WHERE {
-                ?person a ex:Person ;
-                        ex:name ?personName ;
-                        ex:memberOf/^ex:hasDepartment ?org .
-                ?org ex:name ?orgName .
-            }
-            """,
-            lambda b: f"{b['personName']['value']} -> {b['orgName']['value']}",
-        )
-
-        # Query 9: REGEX filter
-        await run_query(
-            backend,
-            "9. REGEX - Find technologies containing 'Python' or 'SPARQL'",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?name
-            WHERE {
-                ?tech a ex:Technology ;
-                      ex:name ?name .
-                FILTER(REGEX(?name, "Python|SPARQL", "i"))
-            }
-            """,
-            lambda b: b["name"]["value"],
-        )
-
-        # Query 10: Complex analysis
-        await run_query(
-            backend,
-            "10. COMPLEX - Technology usage across active projects",
-            """
-            PREFIX ex: <http://example.org/>
-            SELECT ?techName (COUNT(DISTINCT ?project) AS ?projectCount)
-                   (GROUP_CONCAT(DISTINCT ?projectName; separator=", ") AS ?projects)
-            WHERE {
-                ?project a ex:Project ;
-                         ex:name ?projectName ;
-                         ex:status "active" ;
-                         ex:uses ?tech .
-                ?tech ex:name ?techName .
-            }
-            GROUP BY ?tech ?techName
-            ORDER BY DESC(?projectCount)
+            LIMIT 10
             """,
             lambda b: (
-                f"{b['techName']['value']}: {b['projectCount']['value']} projects "
-                f"({b['projects']['value']})"
+                f"[{b.get('type', {}).get('value', '')}] "
+                f"{b.get('entity', {}).get('value', '').split('/')[-1]}"
             ),
         )
 
         # ASK Query Demo
-        print("\n11. ASK QUERIES - Boolean questions")
+        print("\n6. ASK QUERIES - Boolean questions")
         print("-" * 50)
 
         ask_queries = [
             (
-                "Is there anyone named 'Alice Johnson'?",
-                "ASK { ?p <http://example.org/name> 'Alice Johnson' }",
+                "Are there any OWL classes defined?",
+                "PREFIX owl: <http://www.w3.org/2002/07/owl#> ASK { ?c a owl:Class }",
             ),
             (
-                "Are there any projects using Kubernetes?",
-                "ASK { ?p <http://example.org/uses> <http://example.org/kubernetes> }",
-            ),
-            (
-                "Is there a completed project?",
-                "ASK { ?p a <http://example.org/Project> ; "
-                "<http://example.org/status> 'completed' }",
+                "Are there any RDF properties defined?",
+                (
+                    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "
+                    "ASK { ?p a rdf:Property }"
+                ),
             ),
         ]
 
@@ -288,20 +187,18 @@ async def main():
             print(f"   A: {answer}\n")
 
         # CONSTRUCT Query Demo
-        print("\n12. CONSTRUCT - Build a subgraph")
+        print("\n7. CONSTRUCT - Build a subgraph")
         print("-" * 50)
         construct_query = """
-        PREFIX ex: <http://example.org/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
         CONSTRUCT {
-            ?person ex:name ?name ;
-                    ex:worksOn ?project .
-            ?project ex:name ?projectName .
+            ?class a owl:Class ;
+                   rdfs:label ?label .
         }
         WHERE {
-            ?person a ex:Person ;
-                    ex:name ?name ;
-                    ex:worksOn ?project .
-            ?project ex:name ?projectName .
+            ?class a owl:Class .
+            OPTIONAL { ?class rdfs:label ?label }
         }
         LIMIT 5
         """
@@ -309,8 +206,9 @@ async def main():
         result = await backend.sparql_construct(construct_query)
         print("\nResult (Turtle):")
         if result.triples:
-            # Show first 500 chars
             print(result.triples[:800])
+        else:
+            print("   (no results)")
 
         print("\n" + "=" * 60)
         print("Query patterns demo completed!")

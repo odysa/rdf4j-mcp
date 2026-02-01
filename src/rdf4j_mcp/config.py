@@ -1,16 +1,7 @@
 """Configuration for RDF4J MCP Server."""
 
-from enum import Enum
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class BackendType(str, Enum):
-    """Backend type for RDF storage."""
-
-    LOCAL = "local"
-    REMOTE = "remote"
 
 
 class Settings(BaseSettings):
@@ -23,12 +14,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Backend configuration
-    backend_type: BackendType = Field(
-        default=BackendType.LOCAL,
-        description="Backend type: 'local' for rdflib, 'remote' for RDF4J HTTP",
-    )
-
     # Remote backend settings (RDF4J Server)
     rdf4j_server_url: str = Field(
         default="http://localhost:8080/rdf4j-server",
@@ -37,16 +22,6 @@ class Settings(BaseSettings):
     default_repository: str | None = Field(
         default=None,
         description="Default repository ID to use",
-    )
-
-    # Local backend settings
-    local_store_path: str | None = Field(
-        default=None,
-        description="Path to local RDF store file (Turtle, N-Triples, etc.)",
-    )
-    local_store_format: str = Field(
-        default="turtle",
-        description="Format of local RDF file (turtle, xml, n3, nt, nquads, trig, jsonld)",
     )
 
     # Query settings

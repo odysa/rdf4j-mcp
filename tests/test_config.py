@@ -1,6 +1,6 @@
 """Tests for configuration module."""
 
-from rdf4j_mcp.config import BackendType, Settings, configure, get_settings
+from rdf4j_mcp.config import Settings, configure, get_settings
 
 
 class TestSettings:
@@ -10,11 +10,8 @@ class TestSettings:
         """Test default settings values."""
         settings = Settings()
 
-        assert settings.backend_type == BackendType.LOCAL
         assert settings.rdf4j_server_url == "http://localhost:8080/rdf4j-server"
         assert settings.default_repository is None
-        assert settings.local_store_path is None
-        assert settings.local_store_format == "turtle"
         assert settings.query_timeout == 30
         assert settings.default_limit == 100
         assert settings.max_limit == 10000
@@ -24,34 +21,25 @@ class TestSettings:
     def test_custom_settings(self):
         """Test custom settings values."""
         settings = Settings(
-            backend_type=BackendType.REMOTE,
             rdf4j_server_url="http://custom:9999/rdf4j",
             default_repository="test-repo",
             query_timeout=60,
             default_limit=50,
         )
 
-        assert settings.backend_type == BackendType.REMOTE
         assert settings.rdf4j_server_url == "http://custom:9999/rdf4j"
         assert settings.default_repository == "test-repo"
         assert settings.query_timeout == 60
         assert settings.default_limit == 50
 
-    def test_backend_type_enum(self):
-        """Test BackendType enum values."""
-        assert BackendType.LOCAL.value == "local"
-        assert BackendType.REMOTE.value == "remote"
-
     def test_settings_from_env(self, monkeypatch):
         """Test settings from environment variables."""
-        monkeypatch.setenv("RDF4J_MCP_BACKEND_TYPE", "remote")
         monkeypatch.setenv("RDF4J_MCP_RDF4J_SERVER_URL", "http://env-server:8080")
         monkeypatch.setenv("RDF4J_MCP_DEFAULT_REPOSITORY", "env-repo")
         monkeypatch.setenv("RDF4J_MCP_QUERY_TIMEOUT", "45")
 
         settings = Settings()
 
-        assert settings.backend_type == BackendType.REMOTE
         assert settings.rdf4j_server_url == "http://env-server:8080"
         assert settings.default_repository == "env-repo"
         assert settings.query_timeout == 45
