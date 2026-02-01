@@ -105,7 +105,7 @@ python-multipart==0.0.22
     # via mcp
 pyyaml==6.0.3
     # via pre-commit
-rdf4j-python==0.2.0
+rdf4j-python==0.1.6
     # via rdf4j-mcp
 rdflib==7.5.0
     # via rdf4j-mcp
@@ -115,7 +115,7 @@ referencing==0.37.0
 rpds-py==0.30.0
     # via jsonschema
     # via referencing
-ruff==0.15.0
+ruff==0.14.14
     # via rdf4j-mcp
 sse-starlette==3.2.0
     # via mcp
