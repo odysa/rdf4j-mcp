@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="0.1.0",
         description="Version of the MCP server",
     )
+    readonly: bool = Field(
+        default=False,
+        description="Block write operations (INSERT, DELETE, UPDATE, etc.)",
+    )
 
 
 # Global settings instance

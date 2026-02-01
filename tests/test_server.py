@@ -11,7 +11,7 @@ from rdf4j_mcp.backends.base import (
     StatisticsInfo,
 )
 from rdf4j_mcp.config import Settings
-from rdf4j_mcp.server import RDF4JMCPServer, create_server
+from rdf4j_mcp.server import RDF4JMCPServer, ReadonlyError, create_server
 
 
 class TestServerCreation:
@@ -348,3 +348,153 @@ class TestToolHandlers:
         assert data["type"] == "schema_summary"
         assert "statistics" in data
         assert "namespaces" in data
+
+
+class TestReadonlyMode:
+    """Test readonly mode functionality."""
+
+    @pytest.fixture
+    def mock_backend(self):
+        """Create a mock backend for readonly tests."""
+        backend = AsyncMock()
+        backend.sparql_select = AsyncMock(
+            return_value=QueryResult(
+                type="select",
+                variables=["s"],
+                bindings=[{"s": {"type": "uri", "value": "http://example.org/alice"}}],
+            )
+        )
+        backend.sparql_construct = AsyncMock(
+            return_value=QueryResult(
+                type="construct",
+                triples="<http://example.org/alice> a <http://example.org/Person> .",
+            )
+        )
+        backend.sparql_ask = AsyncMock(return_value=QueryResult(type="ask", boolean=True))
+        return backend
+
+    @pytest.fixture
+    async def readonly_server(self, mock_backend):
+        """Create a server with readonly mode enabled."""
+        settings = Settings(
+            rdf4j_server_url="http://localhost:8080/rdf4j-server",
+            default_repository="test-repo",
+            readonly=True,
+        )
+        server = RDF4JMCPServer(settings)
+
+        with patch.object(server, "_create_backend", return_value=mock_backend):
+            await server.start()
+            yield server
+            await server.stop()
+
+    @pytest.fixture
+    async def writable_server(self, mock_backend):
+        """Create a server with readonly mode disabled."""
+        settings = Settings(
+            rdf4j_server_url="http://localhost:8080/rdf4j-server",
+            default_repository="test-repo",
+            readonly=False,
+        )
+        server = RDF4JMCPServer(settings)
+
+        with patch.object(server, "_create_backend", return_value=mock_backend):
+            await server.start()
+            yield server
+            await server.stop()
+
+    async def test_readonly_blocks_insert(self, readonly_server, mock_backend):
+        """Test that INSERT queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_select(
+                mock_backend,
+                {"query": "INSERT DATA { <http://ex.org/s> <http://ex.org/p> <http://ex.org/o> }"},
+                readonly_server._settings,
+            )
+
+    async def test_readonly_blocks_delete(self, readonly_server, mock_backend):
+        """Test that DELETE queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_select(
+                mock_backend,
+                {"query": "DELETE DATA { <http://ex.org/s> <http://ex.org/p> <http://ex.org/o> }"},
+                readonly_server._settings,
+            )
+
+    async def test_readonly_blocks_load(self, readonly_server, mock_backend):
+        """Test that LOAD queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_construct(
+                mock_backend,
+                {"query": "LOAD <http://example.org/data.ttl>"},
+            )
+
+    async def test_readonly_blocks_clear(self, readonly_server, mock_backend):
+        """Test that CLEAR queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_ask(
+                mock_backend,
+                {"query": "CLEAR GRAPH <http://example.org/graph>"},
+            )
+
+    async def test_readonly_blocks_drop(self, readonly_server, mock_backend):
+        """Test that DROP queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_select(
+                mock_backend,
+                {"query": "DROP GRAPH <http://example.org/graph>"},
+                readonly_server._settings,
+            )
+
+    async def test_readonly_blocks_create(self, readonly_server, mock_backend):
+        """Test that CREATE queries are blocked in readonly mode."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_select(
+                mock_backend,
+                {"query": "CREATE GRAPH <http://example.org/newgraph>"},
+                readonly_server._settings,
+            )
+
+    async def test_readonly_allows_select(self, readonly_server, mock_backend):
+        """Test that SELECT queries are allowed in readonly mode."""
+        result = await readonly_server._handle_sparql_select(
+            mock_backend,
+            {"query": "SELECT ?s WHERE { ?s a <http://example.org/Person> }"},
+            readonly_server._settings,
+        )
+        assert len(result) == 1
+
+    async def test_readonly_allows_construct(self, readonly_server, mock_backend):
+        """Test that CONSTRUCT queries are allowed in readonly mode."""
+        result = await readonly_server._handle_sparql_construct(
+            mock_backend,
+            {"query": "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 10"},
+        )
+        assert len(result) == 1
+
+    async def test_readonly_allows_ask(self, readonly_server, mock_backend):
+        """Test that ASK queries are allowed in readonly mode."""
+        result = await readonly_server._handle_sparql_ask(
+            mock_backend,
+            {"query": "ASK { ?s a <http://example.org/Person> }"},
+        )
+        assert len(result) == 1
+
+    async def test_writable_allows_insert(self, writable_server, mock_backend):
+        """Test that INSERT queries are allowed when not in readonly mode."""
+        # This should not raise an error (backend call will be made)
+        await writable_server._handle_sparql_select(
+            mock_backend,
+            {"query": "INSERT DATA { <http://ex.org/s> <http://ex.org/p> <http://ex.org/o> }"},
+            writable_server._settings,
+        )
+        mock_backend.sparql_select.assert_called()
+
+    async def test_check_readonly_case_insensitive(self, readonly_server, mock_backend):
+        """Test that write detection is case-insensitive."""
+        with pytest.raises(ReadonlyError):
+            await readonly_server._handle_sparql_select(
+                mock_backend,
+                {"query": "insert data { <http://ex.org/s> <http://ex.org/p> <http://ex.org/o> }"},
+                readonly_server._settings,
+            )

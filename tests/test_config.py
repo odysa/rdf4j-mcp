@@ -17,6 +17,7 @@ class TestSettings:
         assert settings.max_limit == 10000
         assert settings.server_name == "rdf4j-mcp"
         assert settings.server_version == "0.1.0"
+        assert settings.readonly is False
 
     def test_custom_settings(self):
         """Test custom settings values."""
@@ -25,24 +26,28 @@ class TestSettings:
             default_repository="test-repo",
             query_timeout=60,
             default_limit=50,
+            readonly=True,
         )
 
         assert settings.rdf4j_server_url == "http://custom:9999/rdf4j"
         assert settings.default_repository == "test-repo"
         assert settings.query_timeout == 60
         assert settings.default_limit == 50
+        assert settings.readonly is True
 
     def test_settings_from_env(self, monkeypatch):
         """Test settings from environment variables."""
         monkeypatch.setenv("RDF4J_MCP_RDF4J_SERVER_URL", "http://env-server:8080")
         monkeypatch.setenv("RDF4J_MCP_DEFAULT_REPOSITORY", "env-repo")
         monkeypatch.setenv("RDF4J_MCP_QUERY_TIMEOUT", "45")
+        monkeypatch.setenv("RDF4J_MCP_READONLY", "true")
 
         settings = Settings()
 
         assert settings.rdf4j_server_url == "http://env-server:8080"
         assert settings.default_repository == "env-repo"
         assert settings.query_timeout == 45
+        assert settings.readonly is True
 
 
 class TestGlobalSettings:

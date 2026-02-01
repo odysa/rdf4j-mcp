@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import logging
+import re
 import sys
 from typing import Any
 
@@ -14,12 +15,24 @@ from .backends.base import Backend
 from .backends.remote import RemoteBackend
 from .config import Settings, configure, get_settings
 
+# SPARQL Update keywords that indicate write operations
+SPARQL_WRITE_PATTERN = re.compile(
+    r"\b(INSERT|DELETE|LOAD|CLEAR|DROP|CREATE|ADD|MOVE|COPY)\b",
+    re.IGNORECASE,
+)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+class ReadonlyError(Exception):
+    """Raised when a write operation is attempted in readonly mode."""
+
+    pass
 
 
 class RDF4JMCPServer:
@@ -37,6 +50,21 @@ class RDF4JMCPServer:
         self._backend: Backend | None = None
         self._server = Server(self._settings.server_name)
         self._setup_handlers()
+
+    def _check_readonly(self, query: str) -> None:
+        """Check if a query contains write operations and raise if readonly mode is enabled.
+
+        Args:
+            query: The SPARQL query to check
+
+        Raises:
+            ReadonlyError: If readonly mode is enabled and query contains write operations
+        """
+        if self._settings.readonly and SPARQL_WRITE_PATTERN.search(query):
+            raise ReadonlyError(
+                "Write operations are not allowed in readonly mode. "
+                "Detected SPARQL Update keywords (INSERT, DELETE, LOAD, etc.)."
+            )
 
     def _setup_handlers(self) -> None:
         """Set up MCP handlers."""
@@ -430,6 +458,8 @@ class RDF4JMCPServer:
         import json
 
         query = arguments["query"]
+        self._check_readonly(query)
+
         repo_id = arguments.get("repository_id")
         limit = arguments.get("limit")
 
@@ -452,6 +482,8 @@ class RDF4JMCPServer:
     ) -> list[TextContent]:
         """Handle sparql_construct tool."""
         query = arguments["query"]
+        self._check_readonly(query)
+
         repo_id = arguments.get("repository_id")
         result = await backend.sparql_construct(query, repo_id)
         output = f"# SPARQL CONSTRUCT/DESCRIBE Result\n# Format: Turtle\n\n{result.triples or ''}"
@@ -464,6 +496,8 @@ class RDF4JMCPServer:
         import json
 
         query = arguments["query"]
+        self._check_readonly(query)
+
         repo_id = arguments.get("repository_id")
         result = await backend.sparql_ask(query, repo_id)
         output = {"type": "ask", "result": result.boolean}
@@ -689,6 +723,11 @@ def main() -> None:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--readonly",
+        action="store_true",
+        help="Block write operations (INSERT, DELETE, UPDATE, etc.)",
+    )
 
     args = parser.parse_args()
 
@@ -698,6 +737,7 @@ def main() -> None:
     settings = Settings(
         rdf4j_server_url=args.server_url,
         default_repository=args.repository,
+        readonly=args.readonly,
     )
 
     server = create_server(settings)
