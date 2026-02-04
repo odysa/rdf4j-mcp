@@ -6,11 +6,12 @@ This demo shows how to use the RDF4J MCP server programmatically
 with a remote RDF4J server.
 
 Prerequisites:
-- A running RDF4J server at the configured URL
-- A repository with sample data loaded
+- Run ./setup-demo.sh first to start RDF4J and load sample data
+- Or set RDF4J_MCP_RDF4J_SERVER_URL and RDF4J_MCP_DEFAULT_REPOSITORY env vars
 """
 
 import asyncio
+import os
 
 from rdf4j_mcp.config import Settings
 from rdf4j_mcp.server import RDF4JMCPServer
@@ -21,11 +22,16 @@ async def main():
     print("RDF4J MCP Server - Basic Demo")
     print("=" * 60)
 
-    # Create and start the server with remote backend
-    # Adjust the URL and repository to match your RDF4J server
+    # Use environment variables or defaults matching setup-demo.sh
+    server_url = os.environ.get("RDF4J_MCP_RDF4J_SERVER_URL", "http://localhost:8081/rdf4j-server")
+    repository = os.environ.get("RDF4J_MCP_DEFAULT_REPOSITORY", "demo")
+
+    print(f"\nConnecting to: {server_url}")
+    print(f"Repository: {repository}")
+
     settings = Settings(
-        rdf4j_server_url="http://localhost:8080/rdf4j-server",
-        default_repository="test-repo",
+        rdf4j_server_url=server_url,
+        default_repository=repository,
     )
 
     server = RDF4JMCPServer(settings)

@@ -1,0 +1,235 @@
+@prefix ex: <http://example.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Ontology Classes
+# =============================================================================
+
+ex:Person a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:comment "A human being" .
+
+ex:Project a owl:Class ;
+    rdfs:label "Project" ;
+    rdfs:comment "A planned endeavor with specific goals" .
+
+ex:Organization a owl:Class ;
+    rdfs:label "Organization" ;
+    rdfs:comment "A company, institution, or other organized body" .
+
+ex:Department a owl:Class ;
+    rdfs:label "Department" ;
+    rdfs:comment "A division within an organization" .
+
+ex:Technology a owl:Class ;
+    rdfs:label "Technology" ;
+    rdfs:comment "A tool, framework, or programming language" .
+
+# =============================================================================
+# Object Properties
+# =============================================================================
+
+ex:worksOn a owl:ObjectProperty ;
+    rdfs:label "works on" ;
+    rdfs:comment "Relates a person to a project they work on" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Project .
+
+ex:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:comment "Relates a person to their department" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Department .
+
+ex:partOf a owl:ObjectProperty ;
+    rdfs:label "part of" ;
+    rdfs:comment "Relates a department to an organization" ;
+    rdfs:domain ex:Department ;
+    rdfs:range ex:Organization .
+
+ex:uses a owl:ObjectProperty ;
+    rdfs:label "uses" ;
+    rdfs:comment "Relates a project to a technology it uses" ;
+    rdfs:domain ex:Project ;
+    rdfs:range ex:Technology .
+
+ex:leads a owl:ObjectProperty ;
+    rdfs:label "leads" ;
+    rdfs:comment "Relates a person to a project they lead" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Project .
+
+ex:reportsTo a owl:ObjectProperty ;
+    rdfs:label "reports to" ;
+    rdfs:comment "Relates a person to their manager" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Person .
+
+# =============================================================================
+# Datatype Properties
+# =============================================================================
+
+ex:name a owl:DatatypeProperty ;
+    rdfs:label "name" ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string .
+
+ex:email a owl:DatatypeProperty ;
+    rdfs:label "email" ;
+    rdfs:domain ex:Person ;
+    rdfs:range xsd:string .
+
+ex:budget a owl:DatatypeProperty ;
+    rdfs:label "budget" ;
+    rdfs:comment "Project budget in USD" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:decimal .
+
+ex:startDate a owl:DatatypeProperty ;
+    rdfs:label "start date" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:date .
+
+ex:status a owl:DatatypeProperty ;
+    rdfs:label "status" ;
+    rdfs:domain ex:Project ;
+    rdfs:range xsd:string .
+
+ex:version a owl:DatatypeProperty ;
+    rdfs:label "version" ;
+    rdfs:domain ex:Technology ;
+    rdfs:range xsd:string .
+
+# =============================================================================
+# Organization
+# =============================================================================
+
+ex:acme-corp a ex:Organization ;
+    ex:name "Acme Corporation" .
+
+# =============================================================================
+# Departments
+# =============================================================================
+
+ex:engineering a ex:Department ;
+    ex:name "Engineering" ;
+    ex:partOf ex:acme-corp .
+
+ex:data-science a ex:Department ;
+    ex:name "Data Science" ;
+    ex:partOf ex:acme-corp .
+
+ex:product a ex:Department ;
+    ex:name "Product" ;
+    ex:partOf ex:acme-corp .
+
+# =============================================================================
+# People
+# =============================================================================
+
+ex:alice a ex:Person ;
+    ex:name "Alice Johnson" ;
+    ex:email "alice@acme.com" ;
+    ex:memberOf ex:engineering .
+
+ex:bob a ex:Person ;
+    ex:name "Bob Smith" ;
+    ex:email "bob@acme.com" ;
+    ex:memberOf ex:engineering ;
+    ex:reportsTo ex:alice .
+
+ex:carol a ex:Person ;
+    ex:name "Carol Williams" ;
+    ex:email "carol@acme.com" ;
+    ex:memberOf ex:data-science .
+
+ex:david a ex:Person ;
+    ex:name "David Brown" ;
+    ex:email "david@acme.com" ;
+    ex:memberOf ex:data-science ;
+    ex:reportsTo ex:carol .
+
+ex:emma a ex:Person ;
+    ex:name "Emma Davis" ;
+    ex:email "emma@acme.com" ;
+    ex:memberOf ex:product .
+
+# =============================================================================
+# Technologies
+# =============================================================================
+
+ex:python a ex:Technology ;
+    ex:name "Python" ;
+    ex:version "3.12" .
+
+ex:sparql a ex:Technology ;
+    ex:name "SPARQL" ;
+    ex:version "1.1" .
+
+ex:rdf4j a ex:Technology ;
+    ex:name "RDF4J" ;
+    ex:version "4.3" .
+
+ex:react a ex:Technology ;
+    ex:name "React" ;
+    ex:version "18.2" .
+
+ex:kubernetes a ex:Technology ;
+    ex:name "Kubernetes" ;
+    ex:version "1.28" .
+
+ex:tensorflow a ex:Technology ;
+    ex:name "TensorFlow" ;
+    ex:version "2.15" .
+
+# =============================================================================
+# Projects
+# =============================================================================
+
+ex:kg-platform a ex:Project ;
+    ex:name "Knowledge Graph Platform" ;
+    ex:budget "500000"^^xsd:decimal ;
+    ex:startDate "2024-01-15"^^xsd:date ;
+    ex:status "active" ;
+    ex:uses ex:python, ex:sparql, ex:rdf4j, ex:kubernetes .
+
+ex:data-pipeline a ex:Project ;
+    ex:name "Data Pipeline Infrastructure" ;
+    ex:budget "300000"^^xsd:decimal ;
+    ex:startDate "2024-03-01"^^xsd:date ;
+    ex:status "active" ;
+    ex:uses ex:python, ex:kubernetes .
+
+ex:web-dashboard a ex:Project ;
+    ex:name "Analytics Web Dashboard" ;
+    ex:budget "150000"^^xsd:decimal ;
+    ex:startDate "2024-06-01"^^xsd:date ;
+    ex:status "planning" ;
+    ex:uses ex:react, ex:python .
+
+ex:ml-models a ex:Project ;
+    ex:name "ML Model Training Pipeline" ;
+    ex:budget "400000"^^xsd:decimal ;
+    ex:startDate "2024-02-01"^^xsd:date ;
+    ex:status "active" ;
+    ex:uses ex:python, ex:tensorflow, ex:kubernetes .
+
+# =============================================================================
+# Work Assignments
+# =============================================================================
+
+ex:alice ex:worksOn ex:kg-platform, ex:data-pipeline ;
+    ex:leads ex:kg-platform .
+
+ex:bob ex:worksOn ex:kg-platform, ex:web-dashboard .
+
+ex:carol ex:worksOn ex:ml-models, ex:data-pipeline ;
+    ex:leads ex:ml-models .
+
+ex:david ex:worksOn ex:ml-models .
+
+ex:emma ex:worksOn ex:web-dashboard, ex:kg-platform ;
+    ex:leads ex:web-dashboard .
