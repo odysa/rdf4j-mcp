@@ -29,6 +29,9 @@ dependencies = [
     "pyoxigraph>=0.3.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "starlette>=0.52.1",
+    "uvicorn>=0.40.0",
+    "sse-starlette>=3.2.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +46,7 @@ dev = [
 
 [project.scripts]
 rdf4j-mcp = "rdf4j_mcp.server:main"
+rdf4j-mcp-server = "rdf4j_mcp.main:main"
 
 [dependency-groups]
 dev = [

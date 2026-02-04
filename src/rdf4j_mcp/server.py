@@ -657,6 +657,51 @@ class RDF4JMCPServer:
         finally:
             await self.stop()
 
+    def run_http(self, host: str = "0.0.0.0", port: int = 3000) -> None:
+        """Run the server using HTTP/SSE transport.
+
+        Args:
+            host: Host to bind to (default: 0.0.0.0)
+            port: Port to listen on (default: 3000)
+        """
+        import uvicorn
+        from mcp.server.sse import SseServerTransport
+        from starlette.applications import Starlette
+        from starlette.responses import Response
+        from starlette.routing import Mount, Route
+
+        sse = SseServerTransport("/messages/")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+                await self._server.run(
+                    streams[0], streams[1], self._server.create_initialization_options()
+                )
+            return Response()
+
+        async def handle_health(request):
+            return Response("OK", media_type="text/plain")
+
+        async def lifespan(app):
+            """Handle startup and shutdown."""
+            await self.start()
+            logger.info(f"HTTP server running on http://{host}:{port}")
+            logger.info(f"SSE endpoint: http://{host}:{port}/sse")
+            yield
+            await self.stop()
+
+        starlette_app = Starlette(
+            debug=False,
+            routes=[
+                Route("/sse", endpoint=handle_sse, methods=["GET"]),
+                Route("/health", endpoint=handle_health, methods=["GET"]),
+                Mount("/messages/", app=sse.handle_post_message),
+            ],
+            lifespan=lifespan,
+        )
+
+        uvicorn.run(starlette_app, host=host, port=port, log_level="info")
+
 
 def create_server(settings: Settings | None = None) -> RDF4JMCPServer:
     """Create a new RDF4J MCP server instance.
@@ -672,17 +717,38 @@ def create_server(settings: Settings | None = None) -> RDF4JMCPServer:
 
 def main() -> None:
     """Main entry point for the CLI."""
+    # Load settings from env vars first
+    default_settings = Settings()
+
     parser = argparse.ArgumentParser(
         description="RDF4J MCP Server - Knowledge graph exploration via MCP"
     )
     parser.add_argument(
         "--server-url",
-        default="http://localhost:8080/rdf4j-server",
-        help="RDF4J server URL (default: http://localhost:8080/rdf4j-server)",
+        default=None,
+        help=f"RDF4J server URL (default: {default_settings.rdf4j_server_url})",
     )
     parser.add_argument(
         "--repository",
+        default=None,
         help="Default repository ID",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="stdio",
+        help="Transport type: stdio (default) or http",
+    )
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind to for HTTP transport (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=3000,
+        help="Port for HTTP transport (default: 3000)",
     )
     parser.add_argument(
         "--debug",
@@ -695,15 +761,19 @@ def main() -> None:
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # CLI args override env vars only if explicitly provided
     settings = Settings(
-        rdf4j_server_url=args.server_url,
-        default_repository=args.repository,
+        rdf4j_server_url=args.server_url or default_settings.rdf4j_server_url,
+        default_repository=args.repository or default_settings.default_repository,
     )
 
     server = create_server(settings)
 
     try:
-        asyncio.run(server.run_stdio())
+        if args.transport == "http":
+            server.run_http(host=args.host, port=args.port)
+        else:
+            asyncio.run(server.run_stdio())
     except KeyboardInterrupt:
         logger.info("Server interrupted")
         sys.exit(0)
