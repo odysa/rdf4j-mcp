@@ -206,11 +206,11 @@ All use the `RDF4J_MCP_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
-| `DEFAULT_REPOSITORY` | - | Default repository ID |
-| `QUERY_TIMEOUT` | `30` | Query timeout (seconds) |
-| `DEFAULT_LIMIT` | `100` | Default query LIMIT |
-| `MAX_LIMIT` | `10000` | Maximum query LIMIT |
+| `RDF4J_MCP_RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
+| `RDF4J_MCP_DEFAULT_REPOSITORY` | - | Default repository ID |
+| `RDF4J_MCP_QUERY_TIMEOUT` | `30` | Query timeout (seconds) |
+| `RDF4J_MCP_DEFAULT_LIMIT` | `100` | Default query LIMIT |
+| `RDF4J_MCP_MAX_LIMIT` | `10000` | Maximum query LIMIT |
 
 ## Running RDF4J Server
 

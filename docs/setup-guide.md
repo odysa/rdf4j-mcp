@@ -8,13 +8,13 @@ Complete setup instructions for the RDF4J MCP Server.
 # Install
 git clone https://github.com/your-org/rdf4j-mcp.git
 cd rdf4j-mcp
-pip install -e .
+uv sync  # or: pip install -e .
 
-# Run with sample data
-rdf4j-mcp --backend local --store-path examples/sample_data.ttl
+# Start RDF4J + load sample data
+./examples/setup-demo.sh
 
-# Test it works
-python examples/demo_basic.py
+# Run the server
+rdf4j-mcp --server-url http://localhost:8081/rdf4j-server --repository demo
 ```
 
 Then [configure Claude Desktop](#claude-desktop-setup).
@@ -66,49 +66,11 @@ uv sync --dev
 ```bash
 # Should show help
 rdf4j-mcp --help
-
-# Should run without errors
-rdf4j-mcp --backend local --debug
 ```
 
-## Backend Setup
+## RDF4J Server Setup
 
-### Local Backend (rdflib)
-
-The local backend stores RDF data in memory using rdflib. Best for:
-- Getting started and learning
-- Development and testing
-- Small to medium datasets (< 1M triples)
-- Standalone usage without external services
-
-**Basic usage:**
-
-```bash
-# Empty store
-rdf4j-mcp --backend local
-
-# Load a Turtle file
-rdf4j-mcp --backend local --store-path data.ttl
-
-# Load RDF/XML
-rdf4j-mcp --backend local --store-path data.rdf --store-format xml
-```
-
-**Supported RDF formats:**
-
-| Format | Extension | Flag |
-|--------|-----------|------|
-| Turtle | .ttl | `turtle` |
-| RDF/XML | .rdf, .xml | `xml` |
-| N-Triples | .nt | `nt` |
-| Notation3 | .n3 | `n3` |
-| JSON-LD | .jsonld | `jsonld` |
-| N-Quads | .nq | `nquads` |
-| TriG | .trig | `trig` |
-
-### Remote Backend (RDF4J Server)
-
-The remote backend connects to an Eclipse RDF4J server. Best for:
+The server connects to a remote Eclipse RDF4J server for RDF data storage and SPARQL querying. This is suitable for:
 - Production deployments
 - Large datasets (millions of triples)
 - Shared access / multi-user scenarios
@@ -134,9 +96,7 @@ Or download from [rdf4j.org/download](https://rdf4j.org/download/) and deploy to
 **Step 3: Connect**
 
 ```bash
-rdf4j-mcp --backend remote \
-  --server-url http://localhost:8080/rdf4j-server \
-  --repository my-repo
+rdf4j-mcp --server-url http://localhost:8080/rdf4j-server --repository my-repo
 ```
 
 ## Claude Desktop Setup
@@ -153,7 +113,7 @@ Create the file if it doesn't exist.
 
 ### 2. Add Server Configuration
 
-**Local backend with sample data:**
+**Using CLI arguments:**
 
 ```json
 {
@@ -161,8 +121,8 @@ Create the file if it doesn't exist.
     "rdf4j": {
       "command": "rdf4j-mcp",
       "args": [
-        "--backend", "local",
-        "--store-path", "/absolute/path/to/rdf4j-mcp/examples/sample_data.ttl"
+        "--server-url", "http://localhost:8080/rdf4j-server",
+        "--repository", "my-repo"
       ]
     }
   }
@@ -180,15 +140,15 @@ Create the file if it doesn't exist.
         "run",
         "--directory", "/absolute/path/to/rdf4j-mcp",
         "rdf4j-mcp",
-        "--backend", "local",
-        "--store-path", "/absolute/path/to/rdf4j-mcp/examples/sample_data.ttl"
+        "--server-url", "http://localhost:8080/rdf4j-server",
+        "--repository", "my-repo"
       ]
     }
   }
 }
 ```
 
-**Remote backend with environment variables:**
+**Using environment variables:**
 
 ```json
 {
@@ -196,7 +156,6 @@ Create the file if it doesn't exist.
     "rdf4j": {
       "command": "rdf4j-mcp",
       "env": {
-        "RDF4J_MCP_BACKEND_TYPE": "remote",
         "RDF4J_MCP_RDF4J_SERVER_URL": "http://localhost:8080/rdf4j-server",
         "RDF4J_MCP_DEFAULT_REPOSITORY": "my-repo"
       }
@@ -226,8 +185,8 @@ Use environment variables for configuration without CLI arguments:
 ```bash
 # Create .env file
 cat > .env << 'EOF'
-RDF4J_MCP_BACKEND_TYPE=local
-RDF4J_MCP_LOCAL_STORE_PATH=/path/to/data.ttl
+RDF4J_MCP_RDF4J_SERVER_URL=http://localhost:8080/rdf4j-server
+RDF4J_MCP_DEFAULT_REPOSITORY=my-repo
 RDF4J_MCP_QUERY_TIMEOUT=60
 RDF4J_MCP_DEFAULT_LIMIT=200
 EOF
@@ -236,18 +195,15 @@ EOF
 rdf4j-mcp
 ```
 
-All variables use the `RDF4J_MCP_` prefix.
+All variables use the `RDF4J_MCP_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BACKEND_TYPE` | `local` | `local` or `remote` |
-| `RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
-| `DEFAULT_REPOSITORY` | - | Default repository ID |
-| `LOCAL_STORE_PATH` | - | Path to RDF file |
-| `LOCAL_STORE_FORMAT` | `turtle` | RDF format |
-| `QUERY_TIMEOUT` | `30` | Timeout in seconds |
-| `DEFAULT_LIMIT` | `100` | Default query LIMIT |
-| `MAX_LIMIT` | `10000` | Maximum LIMIT |
+| `RDF4J_MCP_RDF4J_SERVER_URL` | `http://localhost:8080/rdf4j-server` | RDF4J server URL |
+| `RDF4J_MCP_DEFAULT_REPOSITORY` | - | Default repository ID |
+| `RDF4J_MCP_QUERY_TIMEOUT` | `30` | Query timeout in seconds |
+| `RDF4J_MCP_DEFAULT_LIMIT` | `100` | Default query LIMIT |
+| `RDF4J_MCP_MAX_LIMIT` | `10000` | Maximum query LIMIT |
 
 ## Testing Your Setup
 
@@ -273,20 +229,20 @@ The MCP Inspector lets you test your server interactively:
 npm install -g @modelcontextprotocol/inspector
 
 # Run
-mcp-inspector rdf4j-mcp --backend local --store-path examples/sample_data.ttl
+mcp-inspector rdf4j-mcp --server-url http://localhost:8080/rdf4j-server --repository my-repo
 ```
 
 ### Run Unit Tests
 
 ```bash
 # All tests
-pytest
+uv run pytest
 
 # With coverage report
-pytest --cov=rdf4j_mcp
+uv run pytest --cov=rdf4j_mcp
 
 # Specific test file
-pytest tests/test_local_backend.py -v
+uv run pytest tests/ -v
 ```
 
 ## Troubleshooting
@@ -321,15 +277,6 @@ For remote backend:
 1. Check RDF4J server is running: `curl http://localhost:8080/rdf4j-server/repositories`
 2. Verify repository exists in RDF4J Workbench
 3. Check the repository ID matches exactly (case-sensitive)
-
-### "Backend not connected"
-
-The backend context manager wasn't used correctly. If using programmatically:
-```python
-async with LocalBackend() as backend:
-    # Use backend here
-    pass
-```
 
 ### Claude Desktop doesn't show the server
 

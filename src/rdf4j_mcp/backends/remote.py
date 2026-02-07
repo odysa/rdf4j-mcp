@@ -1,9 +1,27 @@
 """Remote RDF backend using RDF4J Python client."""
 
+import asyncio
+import logging
+import time
 from typing import Any
 
+import httpx
 import pyoxigraph as og
+import rdflib
 from rdf4j_python import AsyncRdf4j, AsyncRdf4JRepository
+from rdf4j_python.exception import (
+    NetworkError,
+    QueryError,
+    RepositoryNotFoundException,
+)
+from rdf4j_python.utils.const import Rdf4jContentType
+
+from rdf4j_mcp.exceptions import (
+    QueryTimeoutError,
+    RDF4JConnectionError,
+    RepositoryNotFoundError,
+    SPARQLSyntaxError,
+)
 
 from .base import (
     Backend,
@@ -13,6 +31,10 @@ from .base import (
     StatisticsInfo,
 )
 
+logger = logging.getLogger(__name__)
+
+_RETRY_BACKOFF = (0.5, 1.0, 2.0)
+
 
 class RemoteBackend(Backend):
     """Remote RDF backend using RDF4J HTTP API."""
@@ -21,28 +43,40 @@ class RemoteBackend(Backend):
         self,
         server_url: str,
         default_repository: str | None = None,
+        cache_ttl: int = 300,
+        query_timeout: int = 30,
     ):
         """Initialize remote backend.
 
         Args:
             server_url: URL of the RDF4J server
             default_repository: Default repository ID to use
+            cache_ttl: TTL in seconds for cached results
+            query_timeout: Query timeout in seconds
         """
         self._server_url = server_url.rstrip("/")
         self._default_repository = default_repository
         self._current_repository: str | None = default_repository
         self._client: AsyncRdf4j | None = None
         self._repo: AsyncRdf4JRepository | None = None
+        self._cache_ttl = cache_ttl
+        self._query_timeout = query_timeout
+        self._cache: dict[str, tuple[Any, float]] = {}
 
     async def connect(self) -> None:
         """Connect to the RDF4J server."""
-        self._client = AsyncRdf4j(self._server_url)
-        await self._client.__aenter__()
+        try:
+            self._client = AsyncRdf4j(self._server_url)
+            await self._client.__aenter__()
 
-        # Connect to default repository if specified
-        if self._default_repository:
-            self._repo = await self._client.get_repository(self._default_repository)
-            self._current_repository = self._default_repository
+            # Connect to default repository if specified
+            if self._default_repository:
+                self._repo = await self._client.get_repository(self._default_repository)
+                self._current_repository = self._default_repository
+        except (NetworkError, httpx.ConnectError, OSError) as exc:
+            raise RDF4JConnectionError(
+                f"Failed to connect to RDF4J server at {self._server_url}: {exc}"
+            ) from exc
 
     async def close(self) -> None:
         """Close connection to the server."""
@@ -57,18 +91,74 @@ class RemoteBackend(Backend):
             raise RuntimeError("Backend not connected. Call connect() first.")
         return self._client
 
+    def _cache_get(self, key: str) -> Any | None:
+        """Return cached value if present and not expired, else None."""
+        entry = self._cache.get(key)
+        if entry is not None and time.monotonic() < entry[1]:
+            return entry[0]
+        return None
+
+    def _cache_set(self, key: str, value: Any) -> None:
+        """Store a value in the cache with the configured TTL."""
+        self._cache[key] = (value, time.monotonic() + self._cache_ttl)
+
+    async def _execute_with_retry(
+        self, repo: AsyncRdf4JRepository, query: str, *, is_update: bool = False
+    ) -> Any:
+        """Execute a query/update with retry on transient errors and timeout wrapping."""
+        last_exc: Exception | None = None
+        for attempt, backoff in enumerate(_RETRY_BACKOFF):
+            try:
+                if is_update:
+                    return await asyncio.wait_for(
+                        repo.update(query, Rdf4jContentType.SPARQL_UPDATE),
+                        timeout=self._query_timeout,
+                    )
+                else:
+                    return await asyncio.wait_for(repo.query(query), timeout=self._query_timeout)
+            except TimeoutError as exc:
+                raise QueryTimeoutError(f"Query timed out after {self._query_timeout}s") from exc
+            except httpx.TimeoutException as exc:
+                raise QueryTimeoutError(f"Query timed out after {self._query_timeout}s") from exc
+            except QueryError as exc:
+                raise SPARQLSyntaxError(str(exc)) from exc
+            except (NetworkError, httpx.HTTPStatusError) as exc:
+                # Retry on 5xx server errors
+                is_server_error = (
+                    isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
+                ) or isinstance(exc, NetworkError)
+                if is_server_error and attempt < len(_RETRY_BACKOFF) - 1:
+                    last_exc = exc
+                    logger.warning(
+                        "Transient error (attempt %d/%d), retrying in %.1fs: %s",
+                        attempt + 1,
+                        len(_RETRY_BACKOFF),
+                        backoff,
+                        exc,
+                    )
+                    await asyncio.sleep(backoff)
+                    continue
+                raise RDF4JConnectionError(
+                    f"Request failed after {attempt + 1} attempt(s): {exc}"
+                ) from exc
+        # Should not reach here, but just in case
+        raise RDF4JConnectionError(f"Request failed: {last_exc}") from last_exc
+
     async def _get_repository(self, repository_id: str | None = None) -> AsyncRdf4JRepository:
         """Get repository instance."""
         client = self._ensure_connected()
         repo_id = repository_id or self._current_repository
 
         if repo_id is None:
-            raise ValueError("No repository specified and no default repository set")
+            raise RepositoryNotFoundError("No repository specified and no default repository set")
 
         if self._repo is not None and self._current_repository == repo_id:
             return self._repo
 
-        return await client.get_repository(repo_id)
+        try:
+            return await client.get_repository(repo_id)
+        except RepositoryNotFoundException as exc:
+            raise RepositoryNotFoundError(f"Repository '{repo_id}' not found") from exc
 
     async def list_repositories(self) -> list[RepositoryInfo]:
         """List available repositories."""
@@ -141,7 +231,7 @@ class RemoteBackend(Backend):
     async def sparql_select(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL SELECT query."""
         repo = await self._get_repository(repository_id)
-        result = await repo.query(query)
+        result = await self._execute_with_retry(repo, query)
 
         if isinstance(result, og.QuerySolutions):
             bindings, variables = self._query_solutions_to_bindings(result)
@@ -157,52 +247,52 @@ class RemoteBackend(Backend):
                 variables=[],
             )
 
+    def _oxigraph_to_rdflib(self, term: Any) -> rdflib.term.Node:
+        """Convert a pyoxigraph term to an rdflib term."""
+        if isinstance(term, og.NamedNode):
+            return rdflib.URIRef(term.value)
+        elif isinstance(term, og.BlankNode):
+            return rdflib.BNode(term.value)
+        elif isinstance(term, og.Literal):
+            if term.language:
+                return rdflib.Literal(term.value, lang=term.language)
+            elif term.datatype:
+                return rdflib.Literal(term.value, datatype=rdflib.URIRef(term.datatype.value))
+            else:
+                return rdflib.Literal(term.value)
+        return rdflib.Literal(str(term))
+
     async def sparql_construct(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL CONSTRUCT or DESCRIBE query."""
         repo = await self._get_repository(repository_id)
-        result = await repo.query(query)
+        result = await self._execute_with_retry(repo, query)
 
         if isinstance(result, og.QueryTriples):
-            # Serialize triples to Turtle format
             triples_list = list(result)
-            turtle_lines = []
+            if not triples_list:
+                return QueryResult(type="construct", triples="")
+
+            # Build an rdflib Graph and bind namespace prefixes
+            g = rdflib.Graph()
+            namespaces = await self.get_namespaces(repository_id)
+            for ns in namespaces:
+                g.bind(ns.prefix, rdflib.Namespace(ns.namespace))
+
             for triple in triples_list:
-                s = self._format_term(triple.subject)
-                p = self._format_term(triple.predicate)
-                o = self._format_term(triple.object)
-                turtle_lines.append(f"{s} {p} {o} .")
+                s = self._oxigraph_to_rdflib(triple.subject)
+                p = self._oxigraph_to_rdflib(triple.predicate)
+                o = self._oxigraph_to_rdflib(triple.object)
+                g.add((s, p, o))
 
-            return QueryResult(
-                type="construct",
-                triples="\n".join(turtle_lines),
-            )
+            turtle = g.serialize(format="turtle")
+            return QueryResult(type="construct", triples=turtle.strip())
         else:
-            return QueryResult(
-                type="construct",
-                triples="",
-            )
-
-    def _format_term(self, term: Any) -> str:
-        """Format a term for Turtle output."""
-        if isinstance(term, og.NamedNode):
-            return f"<{term.value}>"
-        elif isinstance(term, og.Literal):
-            escaped = term.value.replace("\\", "\\\\").replace('"', '\\"')
-            if term.language:
-                return f'"{escaped}"@{term.language}'
-            elif term.datatype and term.datatype.value != "http://www.w3.org/2001/XMLSchema#string":
-                return f'"{escaped}"^^<{term.datatype.value}>'
-            else:
-                return f'"{escaped}"'
-        elif isinstance(term, og.BlankNode):
-            return f"_:{term.value}"
-        else:
-            return str(term)
+            return QueryResult(type="construct", triples="")
 
     async def sparql_ask(self, query: str, repository_id: str | None = None) -> QueryResult:
         """Execute a SPARQL ASK query."""
         repo = await self._get_repository(repository_id)
-        result = await repo.query(query)
+        result = await self._execute_with_retry(repo, query)
 
         if isinstance(result, bool):
             return QueryResult(
@@ -216,72 +306,89 @@ class RemoteBackend(Backend):
             )
 
     async def get_namespaces(self, repository_id: str | None = None) -> list[NamespaceInfo]:
-        """Get namespace prefix mappings."""
+        """Get namespace prefix mappings (cached)."""
+        repo_id = repository_id or self._current_repository
+        cache_key = f"ns:{repo_id}"
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         repo = await self._get_repository(repository_id)
         namespaces = await repo.get_namespaces()
-
-        return [NamespaceInfo(prefix=ns.prefix, namespace=str(ns.namespace)) for ns in namespaces]
+        result = [NamespaceInfo(prefix=ns.prefix, namespace=str(ns.namespace)) for ns in namespaces]
+        self._cache_set(cache_key, result)
+        return result
 
     async def get_statistics(self, repository_id: str | None = None) -> StatisticsInfo:
-        """Get repository statistics."""
+        """Get repository statistics (cached)."""
+        repo_id = repository_id or self._current_repository
+        cache_key = f"stats:{repo_id}"
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         repo = await self._get_repository(repository_id)
 
         # Get total statement count
         total_statements = await repo.size()
 
-        # Count classes
-        classes_query = """
-        SELECT (COUNT(DISTINCT ?class) AS ?count) WHERE {
-            { ?class a <http://www.w3.org/2002/07/owl#Class> }
-            UNION { ?class a <http://www.w3.org/2000/01/rdf-schema#Class> }
-            UNION { ?s a ?class }
-        }
+        # Combined subjects + objects count (single scan of all triples)
+        subjects_objects_query = """
+        SELECT (COUNT(DISTINCT ?s) AS ?subjects) (COUNT(DISTINCT ?o) AS ?objects)
+        WHERE { ?s ?p ?o }
         """
-        classes_result = await repo.query(classes_query)
-        total_classes = 0
-        if isinstance(classes_result, og.QuerySolutions):
-            for solution in classes_result:
-                if solution[0] is not None:
-                    total_classes = int(solution[0].value)
-
-        # Count properties
-        props_query = """
-        SELECT (COUNT(DISTINCT ?prop) AS ?count) WHERE {
-            { ?prop a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> }
-            UNION { ?prop a <http://www.w3.org/2002/07/owl#ObjectProperty> }
-            UNION { ?prop a <http://www.w3.org/2002/07/owl#DatatypeProperty> }
-            UNION { ?s ?prop ?o }
-        }
-        """
-        props_result = await repo.query(props_query)
-        total_properties = 0
-        if isinstance(props_result, og.QuerySolutions):
-            for solution in props_result:
-                if solution[0] is not None:
-                    total_properties = int(solution[0].value)
-
-        # Count subjects
-        subjects_query = "SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?s ?p ?o }"
-        subjects_result = await repo.query(subjects_query)
+        so_result = await self._execute_with_retry(repo, subjects_objects_query)
         total_subjects = 0
-        if isinstance(subjects_result, og.QuerySolutions):
-            for solution in subjects_result:
+        total_objects = 0
+        if isinstance(so_result, og.QuerySolutions):
+            for solution in so_result:
                 if solution[0] is not None:
                     total_subjects = int(solution[0].value)
+                if solution[1] is not None:
+                    total_objects = int(solution[1].value)
 
-        # Count objects
-        objects_query = "SELECT (COUNT(DISTINCT ?o) AS ?count) WHERE { ?s ?p ?o }"
-        objects_result = await repo.query(objects_query)
-        total_objects = 0
-        if isinstance(objects_result, og.QuerySolutions):
-            for solution in objects_result:
+        # Combined classes + properties count using subqueries
+        classes_props_query = """
+        SELECT ?classes ?properties WHERE {
+            {
+                SELECT (COUNT(DISTINCT ?class) AS ?classes) WHERE {
+                    { ?class a <http://www.w3.org/2002/07/owl#Class> }
+                    UNION { ?class a <http://www.w3.org/2000/01/rdf-schema#Class> }
+                    UNION { ?s a ?class }
+                }
+            }
+            {
+                SELECT (COUNT(DISTINCT ?prop) AS ?properties) WHERE {
+                    { ?prop a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> }
+                    UNION { ?prop a <http://www.w3.org/2002/07/owl#ObjectProperty> }
+                    UNION { ?prop a <http://www.w3.org/2002/07/owl#DatatypeProperty> }
+                    UNION { ?s ?prop ?o }
+                }
+            }
+        }
+        """
+        cp_result = await self._execute_with_retry(repo, classes_props_query)
+        total_classes = 0
+        total_properties = 0
+        if isinstance(cp_result, og.QuerySolutions):
+            for solution in cp_result:
                 if solution[0] is not None:
-                    total_objects = int(solution[0].value)
+                    total_classes = int(solution[0].value)
+                if solution[1] is not None:
+                    total_properties = int(solution[1].value)
 
-        return StatisticsInfo(
+        result = StatisticsInfo(
             total_statements=total_statements,
             total_classes=total_classes,
             total_properties=total_properties,
             total_subjects=total_subjects,
             total_objects=total_objects,
         )
+        self._cache_set(cache_key, result)
+        return result
+
+    async def sparql_update(self, query: str, repository_id: str | None = None) -> str:
+        """Execute a SPARQL UPDATE query."""
+        repo = await self._get_repository(repository_id)
+        await self._execute_with_retry(repo, query, is_update=True)
+        return "Update executed successfully"
