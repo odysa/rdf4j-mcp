@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
+from rdf4j_mcp.sparql_utils import escape_regex_pattern, validate_iri, validate_limit
+
 
 @dataclass
 class RepositoryInfo:
@@ -99,8 +101,14 @@ class Backend(ABC):
         """Get repository statistics."""
         pass
 
+    @abstractmethod
+    async def sparql_update(self, query: str, repository_id: str | None = None) -> str:
+        """Execute a SPARQL UPDATE query. Returns a status message."""
+        pass
+
     async def describe_resource(self, iri: str, repository_id: str | None = None) -> QueryResult:
         """Get all triples about a resource."""
+        validate_iri(iri)
         query = f"DESCRIBE <{iri}>"
         return await self.sparql_construct(query, repository_id)
 
@@ -111,9 +119,11 @@ class Backend(ABC):
         repository_id: str | None = None,
     ) -> QueryResult:
         """Search for classes in the ontology."""
+        validate_limit(limit)
         filter_clause = ""
         if pattern:
-            filter_clause = f'FILTER(REGEX(STR(?class), "{pattern}", "i"))'
+            safe_pattern = escape_regex_pattern(pattern)
+            filter_clause = f'FILTER(REGEX(STR(?class), "{safe_pattern}", "i"))'
 
         query = f"""
         SELECT DISTINCT ?class ?label ?comment
@@ -141,12 +151,16 @@ class Backend(ABC):
         repository_id: str | None = None,
     ) -> QueryResult:
         """Search for properties in the ontology."""
+        validate_limit(limit)
         filters = []
         if pattern:
-            filters.append(f'REGEX(STR(?property), "{pattern}", "i")')
+            safe_pattern = escape_regex_pattern(pattern)
+            filters.append(f'REGEX(STR(?property), "{safe_pattern}", "i")')
         if domain:
+            validate_iri(domain)
             filters.append(f"?domain = <{domain}>")
         if range_:
+            validate_iri(range_)
             filters.append(f"?range = <{range_}>")
 
         filter_clause = ""
@@ -180,6 +194,8 @@ class Backend(ABC):
         repository_id: str | None = None,
     ) -> QueryResult:
         """Find instances of a class."""
+        validate_iri(class_iri)
+        validate_limit(limit)
         query = f"""
         SELECT DISTINCT ?instance ?label
         WHERE {{

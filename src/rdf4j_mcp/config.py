@@ -37,6 +37,14 @@ class Settings(BaseSettings):
         default=10000,
         description="Maximum allowed LIMIT for queries",
     )
+    cache_ttl: int = Field(
+        default=300,
+        description="TTL in seconds for cached statistics and namespaces",
+    )
+    read_only: bool = Field(
+        default=True,
+        description="If True, reject SPARQL UPDATE operations",
+    )
 
     # Server settings
     server_name: str = Field(
